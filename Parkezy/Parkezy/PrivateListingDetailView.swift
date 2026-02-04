@@ -49,18 +49,8 @@ struct PrivateListingDetailView: View {
             }
         }
         .sheet(isPresented: $showEditSheet) {
-            NavigationStack {
-                Text("Edit functionality coming soon")
-                    .navigationTitle("Edit Listing")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Cancel") {
-                                showEditSheet = false
-                            }
-                        }
-                    }
-            }
+            EditPrivateListingView(listing: listing)
+                .environmentObject(viewModel)
         }
     }
     
@@ -386,7 +376,7 @@ struct PrivateListingDetailView: View {
             
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: DesignSystem.Spacing.s) {
                 ForEach(listing.slots) { slot in
-                    PrivateSlotCard(
+                    LegacyPrivateSlotCard(
                         slot: slot,
                         isSelected: selectedSlot?.id == slot.id
                     ) {
@@ -595,7 +585,7 @@ struct PrivateListingDetailView: View {
 
 // MARK: - Private Slot Card
 
-struct PrivateSlotCard: View {
+struct LegacyPrivateSlotCard: View {
     let slot: PrivateParkingSlot
     let isSelected: Bool
     let onTap: () -> Void

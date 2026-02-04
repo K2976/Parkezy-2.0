@@ -57,7 +57,7 @@ struct UnifiedHostDashboardView: View {
                 .environmentObject(viewModel)
         }
         .refreshable {
-            await viewModel.refreshListings()
+            await viewModel.refreshListingsFromBackend()
         }
     }
     
@@ -70,7 +70,7 @@ struct UnifiedHostDashboardView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                Text(hostViewModel.currentHost?.name ?? "Host")
+                Text(viewModel.currentUser?.name ?? hostViewModel.currentHost?.name ?? "Host")
                     .font(.title.bold())
             }
             
@@ -88,7 +88,7 @@ struct UnifiedHostDashboardView: View {
                     )
                     .frame(width: 50, height: 50)
                 
-                Text(String(hostViewModel.currentHost?.name.prefix(1) ?? "H"))
+                Text(String(viewModel.currentUser?.name.prefix(1) ?? hostViewModel.currentHost?.name.prefix(1) ?? "H"))
                     .font(.title2.bold())
                     .foregroundColor(.white)
             }

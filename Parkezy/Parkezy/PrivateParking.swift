@@ -17,6 +17,7 @@ import SwiftUI
 /// Owner can have multiple listings at different locations
 struct PrivateParkingListing: Identifiable, Hashable {
     let id: UUID
+    var backendID: Int? = nil // ID from Django backend
     var ownerID: UUID
     var ownerName: String
     

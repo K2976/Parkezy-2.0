@@ -131,16 +131,12 @@ struct RoleSelectionView: View {
                     Button {
                         authViewModel.signOut()
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("Logout")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.2))
-                        .cornerRadius(8)
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.title3)
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(Circle())
                     }
                 }
             }

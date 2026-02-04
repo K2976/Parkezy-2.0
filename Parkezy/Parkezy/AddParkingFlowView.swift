@@ -817,18 +817,17 @@ struct DetailsStepView: View {
                 }
             }
             
-            // Pricing (Hourly rate only - Commercial mode)
-            if parkingMode == .commercial {
-                Section("Pricing") {
-                    HStack {
-                        Text("Hourly Rate")
-                        Spacer()
-                        Text("₹")
-                        TextField("40", value: $hourlyRate, format: .number)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                    }
+            
+            // Pricing - Show for both modes
+            Section("Pricing") {
+                HStack {
+                    Text("Hourly Rate")
+                    Spacer()
+                    Text("₹")
+                    TextField("40", value: $hourlyRate, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
                 }
             }
             

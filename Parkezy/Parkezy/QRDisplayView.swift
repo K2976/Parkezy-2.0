@@ -178,13 +178,23 @@ struct QRDisplayView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .onAppear {
-            // Increase screen brightness for QR scanning
-            brightness = UIScreen.main.brightness
-            UIScreen.main.brightness = 1.0
+            // Increase brightness for easier scanning
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                brightness = windowScene.screen.brightness
+                windowScene.screen.brightness = 1.0
+            } else {
+                // Fallback for older iOS or if scene not found
+                brightness = UIScreen.main.brightness
+                UIScreen.main.brightness = 1.0
+            }
         }
         .onDisappear {
-            // Restore original brightness
-            UIScreen.main.brightness = brightness
+            // Restore brightness
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                windowScene.screen.brightness = brightness
+            } else {
+                UIScreen.main.brightness = brightness
+            }
         }
     }
     

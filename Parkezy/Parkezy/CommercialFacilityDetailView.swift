@@ -207,7 +207,7 @@ struct CommercialFacilityDetailView: View {
             
             LazyVGrid(columns: columns, spacing: DesignSystem.Spacing.s) {
                 ForEach(slots) { slot in
-                    SlotCard(
+                    CommercialSlotCard(
                         slot: slot,
                         isSelected: selectedSlot?.id == slot.id,
                         hourlyRate: slot.hourlyRateOverride ?? facility.defaultHourlyRate
@@ -270,7 +270,7 @@ struct CommercialFacilityDetailView: View {
 
 // MARK: - Slot Card
 
-struct SlotCard: View {
+struct CommercialSlotCard: View {
     let slot: CommercialParkingSlot
     let isSelected: Bool
     let hourlyRate: Double

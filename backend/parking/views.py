@@ -215,6 +215,10 @@ class PrivateParkingListingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         
+        # Filter by owner if 'mine' param is present
+        if self.request.query_params.get('mine') == 'true' and self.request.user.is_authenticated:
+            return queryset.filter(owner=self.request.user)
+
         # Calculate distance if user location provided
         user_lat = self.request.query_params.get('lat')
         user_lon = self.request.query_params.get('lon')
