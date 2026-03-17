@@ -92,3 +92,5 @@ staticfiles/
 
 # Node modules (if any)
 node_modules/
+
+Info.plist
