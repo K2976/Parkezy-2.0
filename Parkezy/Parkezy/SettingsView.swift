@@ -12,6 +12,7 @@ struct SettingsView: View {
     
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var hostViewModel: HostViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     // MARK: - State
     
@@ -213,12 +214,17 @@ struct SettingsView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Text("Log Out")
-                                .foregroundColor(.red)
-                                .fontWeight(.semibold)
+                            if authViewModel.isLoading {
+                                ProgressView()
+                            } else {
+                                Text("Log Out")
+                                    .foregroundColor(.red)
+                                    .fontWeight(.semibold)
+                            }
                             Spacer()
                         }
                     }
+                    .disabled(authViewModel.isLoading)
                 }
             }
             .navigationTitle("Settings")
@@ -233,7 +239,7 @@ struct SettingsView: View {
             .alert("Log Out", isPresented: $showLogoutAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Log Out", role: .destructive) {
-                    // Handle logout
+                    authViewModel.signOut()
                 }
             } message: {
                 Text("Are you sure you want to log out?")

@@ -2,14 +2,14 @@
 //  ParkezyApp.swift
 //  Parkezy
 //
-//  Main app entry point with Firebase initialization and auth flow.
+//  Main app entry point with Supabase initialization and auth flow.
 //
 
 import SwiftUI
 
 @main
 struct ParkezyApp: App {
-    // Firebase initialization
+    // App initialization
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     // Auth state management
@@ -40,6 +40,9 @@ struct ParkezyApp: App {
                 // Login/signup screen
                 AuthenticationView()
                     .environmentObject(authViewModel)
+            }
+            .task {
+                await authViewModel.restoreSession()
             }
         }
     }

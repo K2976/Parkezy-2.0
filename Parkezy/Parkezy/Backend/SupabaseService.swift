@@ -15,6 +15,19 @@ final class SupabaseService {
     
     private init() {}
     
+    // MARK: - Auth Notifications
+    static let sessionExpiredNotification = Notification.Name("SupabaseSessionExpired")
+    
+    // MARK: - Helper
+    private func handleSupabaseError(_ error: Error, context: String) {
+        print("Supabase Error [\(context)]: \(error)")
+        // Simplified auth error check based on generic Supabase error structures
+        let errorStr = String(describing: error).lowercased()
+        if errorStr.contains("jwt") || errorStr.contains("expired") || errorStr.contains("unauthorized") {
+            NotificationCenter.default.post(name: Self.sessionExpiredNotification, object: nil)
+        }
+    }
+    
     // MARK: - Auth & User Profiles
     
     /// Queries the 'profiles' table to fetch the current user
@@ -22,7 +35,7 @@ final class SupabaseService {
         do {
             return try await client.database.from("profiles").select().eq("id", value: id).single().execute().value
         } catch {
-            print("Supabase Error [getUserProfile]: \(error)")
+            handleSupabaseError(error, context: "getUserProfile")
             return nil
         }
     }
@@ -33,7 +46,7 @@ final class SupabaseService {
             try await client.database.from("profiles").update(user).eq("id", value: user.id).execute()
             return true
         } catch {
-            print("Supabase Error [updateUserProfile]: \(error)")
+            handleSupabaseError(error, context: "updateUserProfile")
             return false
         }
     }
@@ -45,7 +58,7 @@ final class SupabaseService {
         do {
             return try await client.database.from("private_listings").select().execute().value
         } catch {
-            print("Supabase Error [getAllPrivateListings]: \(error)")
+            handleSupabaseError(error, context: "getAllPrivateListings")
             return []
         }
     }
@@ -55,7 +68,7 @@ final class SupabaseService {
         do {
             return try await client.database.from("private_listings").select().eq("owner_id", value: ownerID).execute().value
         } catch {
-            print("Supabase Error [getMyPrivateListings]: \(error)")
+            handleSupabaseError(error, context: "getMyPrivateListings")
             return []
         }
     }
@@ -65,7 +78,7 @@ final class SupabaseService {
         do {
             return try await client.database.from("private_listings").insert(listing).single().execute().value
         } catch {
-            print("Supabase Error [createPrivateListing]: \(error)")
+            handleSupabaseError(error, context: "createPrivateListing")
             return nil
         }
     }
@@ -76,7 +89,7 @@ final class SupabaseService {
             try await client.database.from("private_listings").update(listing).eq("id", value: listing.id.uuidString).execute()
             return true
         } catch {
-            print("Supabase Error [updatePrivateListing]: \(error)")
+            handleSupabaseError(error, context: "updatePrivateListing")
             return false
         }
     }
@@ -87,7 +100,7 @@ final class SupabaseService {
             try await client.database.from("private_listings").delete().eq("id", value: id).execute()
             return true
         } catch {
-            print("Supabase Error [deletePrivateListing]: \(error)")
+            handleSupabaseError(error, context: "deletePrivateListing")
             return false
         }
     }
@@ -100,7 +113,7 @@ final class SupabaseService {
         do {
             return try await client.database.from("commercial_facilities").select().execute().value
         } catch {
-            print("Supabase Error [getNearbyFacilities]: \(error)")
+            handleSupabaseError(error, context: "getNearbyFacilities")
             return []
         }
     }
@@ -112,7 +125,7 @@ final class SupabaseService {
         do {
             return try await client.database.from("bookings").select().eq("user_id", value: userID).eq("type", value: "private").execute().value
         } catch {
-            print("Supabase Error [getPrivateBookings]: \(error)")
+            handleSupabaseError(error, context: "getPrivateBookings")
             return []
         }
     }
@@ -122,7 +135,7 @@ final class SupabaseService {
         do {
             return try await client.database.from("bookings").insert(request).single().execute().value
         } catch {
-            print("Supabase Error [requestPrivateBooking]: \(error)")
+            handleSupabaseError(error, context: "requestPrivateBooking")
             return nil
         }
     }

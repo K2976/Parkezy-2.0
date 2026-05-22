@@ -51,11 +51,6 @@ struct AuthenticationView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle(isSignUp ? "Create Account" : "Welcome Back")
             .navigationBarTitleDisplayMode(.large)
-            .alert("Error", isPresented: $authViewModel.showError) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(authViewModel.errorMessage ?? "An error occurred")
-            }
             .sheet(isPresented: $showForgotPassword) {
                 ForgotPasswordSheet(email: email, authViewModel: authViewModel)
             }
@@ -147,6 +142,15 @@ struct AuthenticationView: View {
                     .font(.footnote)
                     .foregroundColor(DesignSystem.Colors.primary)
                 }
+            }
+            
+            // Error Message Display
+            if authViewModel.showError, let errorMessage = authViewModel.errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, DesignSystem.Spacing.s)
             }
         }
     }
@@ -270,7 +274,7 @@ struct AuthenticationView: View {
     
     private var isFormValid: Bool {
         let emailValid = email.contains("@") && email.contains(".")
-        let passwordValid = password.count >= 6
+        let passwordValid = password.count >= 8
         let nameValid = !isSignUp || name.count >= 2
         
         return emailValid && passwordValid && nameValid

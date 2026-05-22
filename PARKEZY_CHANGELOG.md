@@ -1,5 +1,28 @@
 # Parkezy Changelog
 
+## Phase 3: Authentication Rewrite
+**Date**: May 2026
+
+### 🗑️ Removed
+- Removed all legacy `FirebaseAuth` and `FirebaseCore` imports.
+- Removed dummy stub logic from `AuthViewModel.swift`.
+
+### 🔧 Modified
+- **AuthViewModel.swift**: Fully rewritten to use Supabase Auth.
+  - Replaced email sign-up/in calls with `client.auth.signUp()` and `client.auth.signIn()`.
+  - Added `restoreSession()` to check and restore existing session on app launch.
+  - Rewrote Apple Sign-In flow to use `signInWithIdToken` and secure cryptographic nonce generation.
+  - Added a session expiry handler that resets auth state.
+- **ParkezyApp.swift**: Removed Firebase auth listener and added a `.task { await authViewModel.restoreSession() }` to properly manage session persistence automatically at app startup.
+- **AuthenticationView.swift**:
+  - Implemented inline error text beneath the form (removed error alerts).
+  - Enforced 8-character password validation minimum for new sign-ups.
+- **SettingsView.swift**: Integrated `authViewModel.signOut()` directly into the Log Out button logic and disabled the button while logout is processing.
+- **SupabaseService.swift**: Added `sessionExpiredNotification` broadcaster. Captures authorization errors globally and notifies `AuthViewModel` to force the user back to the login screen gracefully.
+
+### ✨ Added
+- Real end-to-end user authentication flow bound to `supabase.auth` and the newly created `profiles` table.
+
 ## Phase 2: Supabase Migration
 **Date**: May 2026
 
