@@ -537,74 +537,24 @@ class PrivateParkingViewModel: ObservableObject {
         photoData: [Data],
         description: String
     ) {
-        // Use async task to POST to Django backend
-        Task {
-            do {
-                // Create request for Django API
-                let request = CreatePrivateListingRequest(
-                    title: title,
-                    address: address,
-                    latitude: coordinates.latitude,
-                    longitude: coordinates.longitude,
-                    description: description.isEmpty ? nil : description,
-                    hourlyRate: hourlyRate,
-                    dailyRate: dailyRate > 0 ? dailyRate : nil,
-                    monthlyRate: monthlyRate > 0 ? monthlyRate : nil,
-                    availableSlots: slots,
-                    isCovered: isCovered,
-                    hasCctv: hasCCTV,
-                    hasEvCharging: hasEVCharging,
-                    is24Hours: is24x7,
-                    availableStartTime: availableStartTime?.formatted(date: .omitted, time: .shortened),
-                    availableEndTime: availableEndTime?.formatted(date: .omitted, time: .shortened),
-                    availableDays: availableDays.isEmpty ? nil : availableDays
-                )
-                
-                // POST to Django backend
-                let response = try await ParkingAPIService.shared.createPrivateListing(request)
-                
-                print("✅ Parking listing created successfully with ID: \(response.id)")
-                
-                // Convert response to app model and add to local list
-                await MainActor.run {
-                    let newListing = response.toAppModel()
-                    listings.insert(newListing, at: 0)
-                    myListings.insert(newListing, at: 0)
-                    
-                    // Calculate suggested prices including the new listing
-                    calculateSuggestedPrices()
-                }
-                
-                // Refresh all listings from backend to ensure sync
-                await refreshListingsFromBackend()
-                
-            } catch {
-                print("❌ Failed to create parking listing: \(error.localizedDescription)")
-                errorMessage = "Failed to create listing: \(error.localizedDescription)"
-                
-                // Fallback: Create listing locally (for offline mode)
-                await MainActor.run {
-                    createListingLocally(
-                        title: title,
-                        address: address,
-                        coordinates: coordinates,
-                        slots: slots,
-                        hourlyRate: hourlyRate,
-                        dailyRate: dailyRate,
-                        monthlyRate: monthlyRate,
-                        is24x7: is24x7,
-                        availableStartTime: availableStartTime,
-                        availableEndTime: availableEndTime,
-                        availableDays: availableDays,
-                        isCovered: isCovered,
-                        hasCCTV: hasCCTV,
-                        hasEVCharging: hasEVCharging,
-                        photoData: photoData,
-                        description: description
-                    )
-                }
-            }
-        }
+        createListingLocally(
+            title: title,
+            address: address,
+            coordinates: coordinates,
+            slots: slots,
+            hourlyRate: hourlyRate,
+            dailyRate: dailyRate,
+            monthlyRate: monthlyRate,
+            is24x7: is24x7,
+            availableStartTime: availableStartTime,
+            availableEndTime: availableEndTime,
+            availableDays: availableDays,
+            isCovered: isCovered,
+            hasCCTV: hasCCTV,
+            hasEVCharging: hasEVCharging,
+            photoData: photoData,
+            description: description
+        )
     }
     
     /// Create listing locally (fallback for offline mode)
@@ -677,64 +627,17 @@ class PrivateParkingViewModel: ObservableObject {
             isLoading = true
             defer { isLoading = false }
             
-            do {
-                if !AppConfig.useFirebase, let backendID = updatedListing.backendID {
-                    // Update on Backend
-                    let request = UpdatePrivateListingRequest(
-                        title: updatedListing.title,
-                        address: updatedListing.address,
-                        latitude: updatedListing.coordinates.latitude,
-                        longitude: updatedListing.coordinates.longitude,
-                        description: updatedListing.listingDescription,
-                        hourlyRate: updatedListing.hourlyRate,
-                        dailyRate: updatedListing.dailyRate,
-                        monthlyRate: updatedListing.monthlyRate,
-                        availableSlots: updatedListing.totalSlots,
-                        isCovered: updatedListing.isCovered,
-                        hasCctv: updatedListing.hasCCTV,
-                        hasEvCharging: updatedListing.hasEVCharging,
-                        is24Hours: updatedListing.is24Hours,
-                        availableStartTime: nil, // TODO: Format dates if needed
-                        availableEndTime: nil,
-                        availableDays: updatedListing.availableDays,
-                        autoAcceptBookings: updatedListing.autoAcceptBookings
-                    )
-                    
-                    _ = try await ParkingAPIService.shared.updatePrivateListing(id: backendID, request: request)
-                    print("✅ Listing updated on Backend: \(updatedListing.title)")
-                }
-                
-                // Update local state
-                await MainActor.run {
-                    if let index = self.listings.firstIndex(where: { $0.id == updatedListing.id }) {
-                        self.listings[index] = updatedListing
-                    }
-                    if let index = self.myListings.firstIndex(where: { $0.id == updatedListing.id }) {
-                        self.myListings[index] = updatedListing
-                    }
-                    self.calculateSuggestedPrices()
-                    completion(true)
-                }
-                
-            } catch {
-                print("❌ Failed to update listing: \(error.localizedDescription)")
-                await MainActor.run {
-                    self.errorMessage = "Failed to update listing: \(error.localizedDescription)"
-                    completion(false)
-                }
-            }
-        }
-    }
-    
-    /// Fetch current user profile
-    func fetchCurrentUser() async {
-        do {
-            let profile = try await ParkingAPIService.shared.getUserProfile()
+            // Update local state
             await MainActor.run {
-                self.currentUser = profile
+                if let index = self.listings.firstIndex(where: { $0.id == updatedListing.id }) {
+                    self.listings[index] = updatedListing
+                }
+                if let index = self.myListings.firstIndex(where: { $0.id == updatedListing.id }) {
+                    self.myListings[index] = updatedListing
+                }
+                self.calculateSuggestedPrices()
+                completion(true)
             }
-        } catch {
-            print("⚠️ Failed to fetch user profile: \(error.localizedDescription)")
         }
     }
     

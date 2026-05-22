@@ -2,33 +2,31 @@
 //  AppConfig.swift
 //  ParkEzy
 //
-//  App-wide configuration for switching between mock data and Firebase.
-//  Set useFirebase to true when Firebase is configured.
+//  App-wide configuration for backend environment.
 //
 
 import Foundation
 
 /// Global app configuration
 struct AppConfig {
-    /// Set to true to use Firebase backend, false for mock data
-    /// Change this to true once GoogleService-Info.plist is added
-    static var useFirebase: Bool {
-        // Check if Firebase is properly configured
+    
+    // MARK: - Supabase Environment Configuration
+    
+    /// True if Supabase keys are configured, otherwise app uses mock data
+    static var useSupabase: Bool {
         #if DEBUG
-        // In debug, allow mock data for testing
-        return _useFirebaseOverride ?? hasFirebaseConfig
+        return _useSupabaseOverride ?? hasSupabaseConfig
         #else
-        // In release, always try to use Firebase
-        return hasFirebaseConfig
+        return hasSupabaseConfig
         #endif
     }
     
     /// Override for testing (DEBUG only)
-    static var _useFirebaseOverride: Bool?
+    static var _useSupabaseOverride: Bool? = false
     
-    /// Check if GoogleService-Info.plist exists
-    private static var hasFirebaseConfig: Bool {
-        Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
+    /// Check if Supabase placeholders have been replaced
+    private static var hasSupabaseConfig: Bool {
+        // If the URL still contains "PLACEHOLDER", it's not configured
+        !SupabaseConfig.supabaseURL.absoluteString.contains("PLACEHOLDER")
     }
 }
-

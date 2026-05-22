@@ -14,7 +14,7 @@ class HostViewModel: ObservableObject {
     // MARK: - Published Properties
     
     /// Current user in host mode
-    @Published var currentHost: User?
+    @Published var currentHost: AppUser?
     
     /// All parking spots owned by this host
     @Published var ownedSpots: [ParkingSpot] = []
@@ -64,15 +64,15 @@ class HostViewModel: ObservableObject {
     /// Load mock host data for demo
     private func loadMockHostData() {
         // Create mock host user
-        currentHost = User(
-            id: UUID(),
-            name: "Rohit Sharma",
+        currentHost = AppUser(
+            id: UUID().uuidString,
             email: "rohit@parkezy.com",
+            name: "Rohit Sharma",
             phoneNumber: "+91 98765 43210",
             profileImageURL: nil,
-            isHost: true,
-            hostRating: 4.8,
-            totalBookings: 456
+            createdAt: Date(),
+            capabilities: UserCapabilities(canDrive: true, canHostPrivate: true, canHostCommercial: false),
+            stats: UserStats(totalBookingsAsDriver: 10, hostRating: 4.8, totalEarnings: 50000)
         )
         
         // Load owned spots from MockDataService (8 spots for this host)

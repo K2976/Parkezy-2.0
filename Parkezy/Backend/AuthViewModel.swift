@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import FirebaseAuth
 import AuthenticationServices
 import Combine
 
@@ -32,52 +31,10 @@ final class AuthViewModel: ObservableObject {
     /// Show error alert
     @Published var showError = false
     
-    // MARK: - Dependencies
-    
-    private let authRepo = AuthRepository.shared
-    private let userRepo = UserRepository.shared
-    private let firebase = FirebaseManager.shared
-    
-    private var authStateListener: AuthStateDidChangeListenerHandle?
-    private var userListener: AnyCancellable?
-    
     // MARK: - Initialization
     
     init() {
-        setupAuthStateListener()
-    }
-    
-    deinit {
-        if let handle = authStateListener {
-            firebase.auth.removeStateDidChangeListener(handle)
-        }
-    }
-    
-    // MARK: - Auth State Listener
-    
-    /// Listen to auth state changes (login/logout)
-    private func setupAuthStateListener() {
-        authStateListener = firebase.auth.addStateDidChangeListener { [weak self] _, user in
-            Task { @MainActor in
-                self?.isAuthenticated = user != nil
-                
-                if let userID = user?.uid {
-                    await self?.loadCurrentUser(id: userID)
-                } else {
-                    self?.currentUser = nil
-                }
-            }
-        }
-    }
-    
-    /// Load current user profile
-    private func loadCurrentUser(id: String) async {
-        do {
-            currentUser = try await userRepo.getUser(id: id)
-        } catch {
-            // User might not have a profile yet, create one
-            print("Could not load user: \(error.localizedDescription)")
-        }
+        // Stub for now
     }
     
     // MARK: - Email Authentication
@@ -86,15 +43,8 @@ final class AuthViewModel: ObservableObject {
     func signUp(email: String, password: String, name: String) async {
         isLoading = true
         errorMessage = nil
-        
-        do {
-            let userID = try await authRepo.signUp(email: email, password: password, name: name)
-            await loadCurrentUser(id: userID)
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-        
+        // Stub implementation
+        isAuthenticated = true
         isLoading = false
     }
     
@@ -102,40 +52,21 @@ final class AuthViewModel: ObservableObject {
     func signIn(email: String, password: String) async {
         isLoading = true
         errorMessage = nil
-        
-        do {
-            let userID = try await authRepo.signIn(email: email, password: password)
-            await loadCurrentUser(id: userID)
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-        
+        // Stub implementation
+        isAuthenticated = true
         isLoading = false
     }
     
     /// Sign out
     func signOut() {
-        do {
-            try authRepo.signOut()
-            currentUser = nil
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
+        isAuthenticated = false
+        currentUser = nil
     }
     
     /// Send password reset email
     func sendPasswordReset(email: String) async {
         isLoading = true
-        
-        do {
-            try await authRepo.sendPasswordReset(email: email)
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-        
+        // Stub implementation
         isLoading = false
     }
     
@@ -143,32 +74,15 @@ final class AuthViewModel: ObservableObject {
     
     /// Generate nonce for Apple Sign-In
     func generateAppleNonce() -> String {
-        authRepo.generateNonce()
+        return "mock_nonce"
     }
     
     /// Handle Apple Sign-In authorization
     func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) async {
         isLoading = true
         errorMessage = nil
-        
-        switch result {
-        case .success(let authorization):
-            do {
-                let userID = try await authRepo.handleAppleSignIn(authorization: authorization)
-                await loadCurrentUser(id: userID)
-            } catch {
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-            
-        case .failure(let error):
-            // User cancelled or error occurred
-            if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-        }
-        
+        // Stub implementation
+        isAuthenticated = true
         isLoading = false
     }
     
@@ -176,43 +90,16 @@ final class AuthViewModel: ObservableObject {
     
     /// Enable private hosting capability
     func enablePrivateHosting() async {
-        guard let userID = firebase.currentUserID else { return }
-        
-        do {
-            try await userRepo.enableCapability(.canHostPrivate, for: userID)
-            currentUser?.capabilities.canHostPrivate = true
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
+        // Stub
     }
     
     /// Enable commercial hosting capability
     func enableCommercialHosting() async {
-        guard let userID = firebase.currentUserID else { return }
-        
-        do {
-            try await userRepo.enableCapability(.canHostCommercial, for: userID)
-            currentUser?.capabilities.canHostCommercial = true
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
+        // Stub
     }
     
     /// Update user profile
     func updateProfile(name: String, phone: String) async {
-        guard var user = currentUser else { return }
-        
-        user.name = name
-        user.phoneNumber = phone
-        
-        do {
-            try await userRepo.updateUser(user)
-            currentUser = user
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
+        // Stub
     }
 }
