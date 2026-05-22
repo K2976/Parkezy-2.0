@@ -66,7 +66,7 @@ struct ParkingWidgetProvider: AppIntentTimelineProvider {
         if hasSession {
             // Generate entries every minute for the next hour
             for minuteOffset in stride(from: 0, to: 60, by: 1) {
-                let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: currentDate)!
+                let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: currentDate) ?? currentDate
                 let endTime = currentDate.addingTimeInterval(3600) // Mock 1 hour session
                 let timeRemaining = endTime.timeIntervalSince(entryDate)
                 
@@ -190,18 +190,20 @@ struct ParkingWidgetEntryView: View {
                         .foregroundColor(.green)
                 }
                 
-                // Deep link to extend
-                Link(destination: URL(string: "parkezy://extend")!) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Extend")
+                if let extendURL = URL(string: "parkezy://extend") {
+                    // Deep link to extend
+                    Link(destination: extendURL) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Extend")
+                        }
+                        .font(.caption.bold())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(16)
                     }
-                    .font(.caption.bold())
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(16)
                 }
             }
         }
@@ -221,17 +223,19 @@ struct ParkingWidgetEntryView: View {
                 .font(.headline)
                 .foregroundColor(.secondary)
             
-            Link(destination: URL(string: "parkezy://find")!) {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                    Text("Find Parking")
+            if let findURL = URL(string: "parkezy://find") {
+                Link(destination: findURL) {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                        Text("Find Parking")
+                    }
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
                 }
-                .font(.caption.bold())
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.blue)
-                .foregroundColor(.white)
-                .cornerRadius(16)
             }
         }
         .padding()

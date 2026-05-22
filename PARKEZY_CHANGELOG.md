@@ -1,5 +1,47 @@
 # Parkezy Changelog
 
+## Phase 4: UI Stability & Crash Prevention
+**Date**: May 2026
+
+### 🐛 Force-Unwrap Elimination (0 remaining)
+- **BookingConfirmationView.swift**: Wrapped `bookingViewModel.activeSession!` in `if let` (2 sites).
+- **BookingViewModel.swift**: Replaced `Calendar.date(byAdding:)!` with `?? now` fallback (2 sites).
+- **BookingSession.swift**: Fixed `mockSession` static property `Calendar.date!` (2 sites).
+- **CommercialParkingViewModel.swift**: Fixed `Calendar.date!` (2 sites) and `randomElement()!` (1 site — already done in prior pass).
+- **PrivateParkingViewModel.swift**: Fixed `Calendar.date!` (3 sites), `randomElement()!` (4 sites), and array literal subscript `[i]` → `[i % 3]` (2 sites).
+- **HostViewModel.swift**: Fixed `Calendar.date!` in `generateRevenueData` and `updateRevenueData` (4 sites).
+- **SettingsView.swift**: Wrapped `URL(string:)!` for Terms, Privacy, and shareApp (3 sites).
+- **FindParkingIntent.swift**: Replaced `URL(string:)!` with `guard let … throw` (2 sites).
+- **ParkingLiveActivity.swift**: Wrapped `URL(string:)!` deep-link in `if let` (1 site).
+- **ParkingWidget.swift**: Fixed `Calendar.date!` (1 site) and `URL(string:)!` deep-links (2 sites).
+- **SupabaseConfig.swift**: Replaced `URL(string:)!` with `guard let … preconditionFailure` with clear diagnostic message.
+
+### 🔧 Mock Data Cleanup
+- **HostViewModel.swift**: Removed 100% mock-data `loadMockHostData()` and `generateMockBookings()` methods. Replaced with `loadHostData()` async method that loads user profile and bookings from `SupabaseService`.
+- **PrivateParkingViewModel.swift**: Replaced `deleteListing` local-only logic with `SupabaseService.shared.deletePrivateListing()` async call.
+- **PrivateParkingViewModel.swift**: Scrubbed all hardcoded fake phone numbers (`+91 98765 xxxxx`).
+- **MockDataService.swift**: Added `TESTING ONLY — NOT USED IN PRODUCTION` markers to all public methods.
+- **AuthenticationView.swift**: Commented out the `testLoginButton` and its `test@parkezy.com` credential.
+- **SettingsView.swift**: Commented out unimplemented Call/Email support links with hardcoded phone/email.
+
+### 🚫 Dead Code Disabled
+- **BookingViewModel.swift**: Wrapped `startLiveActivity()`, `updateLiveActivity()`, `endLiveActivity()` in `if #available(iOS 16.2, *)` stubs.
+- **ParkingLiveActivity.swift**: Already had Widget code commented out — no changes needed.
+- **FindParkingIntent.swift**: `ParkEzyShortcuts` AppShortcutsProvider already commented out — confirmed.
+- **ParkingAPIService.swift**: Confirmed deleted (Phase 2).
+- **AuthRepository.swift**: Confirmed deleted (Phase 2).
+
+### ✨ New Files
+- **`Backend/NetworkMonitor.swift`**: `NWPathMonitor`-based singleton that publishes `isConnected` and `connectionType` on `@MainActor`. Used by `OfflineBannerView`.
+- **`Components/StandardStateViews.swift`**: Reusable UI components:
+  - `LoadingStateView` — spinner + message.
+  - `EmptyStateView` — icon + title + message + optional action button.
+  - `ErrorStateView` — warning icon + message + optional retry button.
+  - `OfflineBannerView` — red banner auto-shown when `NetworkMonitor.isConnected == false`.
+
+### 🏗️ App Entry Point
+- **ParkezyApp.swift**: Added `ZStack` with `OfflineBannerView()` overlay so the offline banner appears globally above all screens.
+
 ## Phase 3: Authentication Rewrite
 **Date**: May 2026
 

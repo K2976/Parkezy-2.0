@@ -55,98 +55,30 @@ class HostViewModel: ObservableObject {
     // MARK: - Initialization
     
     init() {
-        loadMockHostData()
-        generateChartData()
+        Task {
+            await loadHostData()
+        }
     }
     
     // MARK: - Data Loading
     
-    /// Load mock host data for demo
-    private func loadMockHostData() {
-        // Create mock host user
-        currentHost = AppUser(
-            id: UUID().uuidString,
-            email: "rohit@parkezy.com",
-            name: "Rohit Sharma",
-            phoneNumber: "+91 98765 43210",
-            profileImageURL: nil,
-            createdAt: Date(),
-            capabilities: UserCapabilities(canDrive: true, canHostPrivate: true, canHostCommercial: false),
-            stats: UserStats(totalBookingsAsDriver: 10, hostRating: 4.8, totalEarnings: 50000)
-        )
+    /// Load real host data from Supabase
+    private func loadHostData() async {
+        guard let session = try? await SupabaseConfig.client.auth.session else { return }
         
-        // Load owned spots from MockDataService (8 spots for this host)
-        ownedSpots = Array(MockDataService.shared.parkingSpots.prefix(8))
-        
-        // Generate mock active bookings
-        generateMockBookings()
-        
-        // Calculate earnings
-        calculateEarnings()
-    }
-    
-    /// Generate mock bookings for demo
-    private func generateMockBookings() {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // 6 Active bookings (currently parked)
-        for i in 0..<6 {
-            let spot = ownedSpots[i % ownedSpots.count]
-            let hoursAgo = Double.random(in: 0.5...3.0)
-            let startTime = calendar.date(byAdding: .minute, value: -Int(hoursAgo * 60), to: now)!
-            let duration = Double.random(in: 1.0...4.0)
-            let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime)!
-            
-            let booking = BookingSession(
-                id: UUID(),
-                spotID: spot.id,
-                userID: UUID(),
-                bookingTime: calendar.date(byAdding: .hour, value: -1, to: startTime)!,
-                scheduledStartTime: startTime,
-                actualStartTime: startTime,
-                scheduledEndTime: endTime,
-                actualEndTime: nil,
-                duration: duration,
-                totalCost: spot.pricePerHour * duration * 1.18, // Including GST
-                status: .active,
-                accessCode: String(format: "%06d", Int.random(in: 100000...999999))
-            )
-            
-            activeBookings.append(booking)
+        let userID = session.user.id.uuidString
+        if let userProfile = await SupabaseService.shared.getUserProfile(id: userID) {
+            self.currentHost = userProfile
         }
         
-        // 75 Completed bookings for history (spread across last 30 days)
-        for i in 0..<75 {
-            let spot = ownedSpots[i % ownedSpots.count]
-            let daysAgo = Int.random(in: 0...30)
-            let hour = Int.random(in: 8...20)
-            var components = calendar.dateComponents([.year, .month, .day], from: calendar.date(byAdding: .day, value: -daysAgo, to: now)!)
-            components.hour = hour
-            components.minute = Int.random(in: 0...59)
-            let startTime = calendar.date(from: components) ?? now
-            let duration = Double.random(in: 0.5...6.0)
-            let endTime = calendar.date(byAdding: .minute, value: Int(duration * 60), to: startTime)!
-            
-            let booking = BookingSession(
-                id: UUID(),
-                spotID: spot.id,
-                userID: UUID(),
-                bookingTime: calendar.date(byAdding: .hour, value: -2, to: startTime)!,
-                scheduledStartTime: startTime,
-                actualStartTime: startTime,
-                scheduledEndTime: endTime,
-                actualEndTime: endTime,
-                duration: duration,
-                totalCost: spot.pricePerHour * duration * 1.18,
-                status: .completed,
-                accessCode: String(format: "%06d", Int.random(in: 100000...999999))
-            )
-            
-            completedBookings.append(booking)
-        }
+        // Load bookings
+        let allBookings = await SupabaseService.shared.getPrivateBookings(userID: userID)
+        self.activeBookings = allBookings.filter { $0.status == .active }
+        self.completedBookings = allBookings.filter { $0.status == .completed }
+        self.activeBookingCount = self.activeBookings.count
         
-        activeBookingCount = activeBookings.count
+        self.calculateEarnings()
+        self.generateChartData()
     }
     
     /// Calculate earnings from bookings
@@ -193,7 +125,7 @@ class HostViewModel: ObservableObject {
         let today = Date()
         
         revenueData = (0..<7).reversed().map { daysAgo in
-            let date = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
+            let date = calendar.date(byAdding: .day, value: -daysAgo, to: today) ?? today
             
             // Get bookings for this day
             let dayBookings = completedBookings.filter {
@@ -340,7 +272,7 @@ class HostViewModel: ObservableObject {
         case .week:
             // Show last 7 days
             revenueData = (0..<7).reversed().map { daysAgo in
-                let date = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
+                let date = calendar.date(byAdding: .day, value: -daysAgo, to: today) ?? today
                 let amount = Double.random(in: 50...300)
                 return RevenueData(date: date, amount: amount)
             }
@@ -348,7 +280,7 @@ class HostViewModel: ObservableObject {
         case .month:
             // Show last 4 weeks (aggregated by week)
             revenueData = (0..<4).reversed().map { weeksAgo in
-                let date = calendar.date(byAdding: .weekOfYear, value: -weeksAgo, to: today)!
+                let date = calendar.date(byAdding: .weekOfYear, value: -weeksAgo, to: today) ?? today
                 let amount = Double.random(in: 500...2000)
                 return RevenueData(date: date, amount: amount)
             }
@@ -356,7 +288,7 @@ class HostViewModel: ObservableObject {
         case .year:
             // Show last 12 months
             revenueData = (0..<12).reversed().map { monthsAgo in
-                let date = calendar.date(byAdding: .month, value: -monthsAgo, to: today)!
+                let date = calendar.date(byAdding: .month, value: -monthsAgo, to: today) ?? today
                 let amount = Double.random(in: 2000...10000)
                 return RevenueData(date: date, amount: amount)
             }

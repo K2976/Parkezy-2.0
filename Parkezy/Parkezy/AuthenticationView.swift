@@ -40,7 +40,7 @@ struct AuthenticationView: View {
                     
                     // Quick Test Login (Development Only)
                     #if DEBUG
-                    testLoginButton
+                    // testLoginButton
                     #endif
                     
                     // Toggle Sign Up / Sign In
@@ -244,7 +244,8 @@ struct AuthenticationView: View {
     }
     
     // MARK: - Test Login (Development)
-    
+    // Removed until implemented properly
+    /*
     private var testLoginButton: some View {
         Button {
             email = "test@parkezy.com"
@@ -269,6 +270,7 @@ struct AuthenticationView: View {
             )
         }
     }
+    */
     
     // MARK: - Validation
     

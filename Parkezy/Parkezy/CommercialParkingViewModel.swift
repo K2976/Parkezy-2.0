@@ -236,9 +236,9 @@ class CommercialParkingViewModel: ObservableObject {
             for _ in 0..<Int.random(in: 5...15) {
                 guard let slot = facility.slots.randomElement() else { continue }
                 let daysAgo = Int.random(in: 0...30)
-                let startTime = calendar.date(byAdding: .day, value: -daysAgo, to: now)!
+                let startTime = calendar.date(byAdding: .day, value: -daysAgo, to: now) ?? now
                 let duration = Double.random(in: 1...6)
-                let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime)!
+                let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime) ?? startTime
                 
                 let booking = CommercialBooking(
                     id: UUID(),
@@ -254,7 +254,7 @@ class CommercialParkingViewModel: ObservableObject {
                     estimatedDuration: duration,
                     estimatedCost: facility.defaultHourlyRate * duration * 1.18,
                     actualCost: facility.defaultHourlyRate * duration * 1.18,
-                    vehicleNumber: "DL \(Int.random(in: 1...14)) \(["A", "B", "C", "S", "T"].randomElement()!) \(Int.random(in: 1000...9999))",
+                    vehicleNumber: "DL \(Int.random(in: 1...14)) \((["A", "B", "C", "S", "T"].randomElement() ?? "A")) \(Int.random(in: 1000...9999))",
                     vehicleType: ["Sedan", "SUV", "Hatchback", "Compact"].randomElement(),
                     status: .completed,
                     accessCode: String(format: "%06d", Int.random(in: 100000...999999))

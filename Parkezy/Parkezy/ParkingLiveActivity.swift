@@ -270,14 +270,16 @@ struct LockScreenLiveActivityView: View {
                     .foregroundColor(.green)
                 
                 // Extend Button
-                Link(destination: URL(string: "parkezy://extend")!) {
-                    Label("Extend", systemImage: "plus.circle.fill")
-                        .font(.caption.bold())
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(16)
+                if let extendURL = URL(string: "parkezy://extend") {
+                    Link(destination: extendURL) {
+                        Label("Extend", systemImage: "plus.circle.fill")
+                            .font(.caption.bold())
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(16)
+                    }
                 }
             }
         }

@@ -63,8 +63,8 @@ struct BookingSession: Identifiable, Codable, Hashable {
     
     static var mockSession: BookingSession {
         let now = Date()
-        let startTime = Calendar.current.date(byAdding: .hour, value: -1, to: now)!
-        let endTime = Calendar.current.date(byAdding: .hour, value: 1, to: now)!
+        let startTime = Calendar.current.date(byAdding: .hour, value: -1, to: now) ?? now
+        let endTime = Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now
         
         return BookingSession(
             id: UUID(),

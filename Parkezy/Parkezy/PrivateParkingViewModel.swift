@@ -228,7 +228,7 @@ class PrivateParkingViewModel: ObservableObject {
                 id: UUID(),
                 slotNumber: i,
                 slotLabel: count > 1 ? labels[min(i - 1, labels.count - 1)] : nil,
-                vehicleSize: [.compact, .standard, .large].randomElement()!,
+                vehicleSize: [.compact, .standard, .large].randomElement() ?? .compact,
                 canFitSUV: i <= 2,
                 canFitBike: true,
                 isOccupied: isOccupied,
@@ -250,10 +250,10 @@ class PrivateParkingViewModel: ObservableObject {
             for _ in 0..<Int.random(in: 3...10) {
                 guard let slot = listing.slots.randomElement() else { continue }
                 let daysAgo = Int.random(in: 1...30)
-                let startTime = calendar.date(byAdding: .day, value: -daysAgo, to: now)!
-                let durationType: PrivateBookingDuration = [.hourly, .daily].randomElement()!
+                let startTime = calendar.date(byAdding: .day, value: -daysAgo, to: now) ?? now
+                let durationType: PrivateBookingDuration = [.hourly, .daily].randomElement() ?? .hourly
                 let duration = durationType == .hourly ? Double.random(in: 2...8) : 24
-                let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime)!
+                let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime) ?? startTime
                 let rate = durationType == .hourly ? listing.hourlyRate : listing.dailyRate
                 
                 let booking = PrivateBooking(
@@ -262,9 +262,9 @@ class PrivateParkingViewModel: ObservableObject {
                     slotID: slot.id,
                     driverID: UUID(),
                     hostID: listing.ownerID,
-                    driverName: ["Rohit", "Sneha", "Arjun", "Meera", "Karan"].randomElement()!,
-                    driverPhone: "+91 98765 \(Int.random(in: 10000...99999))",
-                    vehicleNumber: "DL \(Int.random(in: 1...14)) \(["A", "B", "C", "S"].randomElement()!) \(Int.random(in: 1000...9999))",
+                    driverName: ["Rohit", "Sneha", "Arjun", "Meera", "Karan"].randomElement() ?? "Guest",
+                    driverPhone: "",
+                    vehicleNumber: "DL \(Int.random(in: 1...14)) \((["A", "B", "C", "S"].randomElement() ?? "A")) \(Int.random(in: 1000...9999))",
                     requestTime: startTime.addingTimeInterval(-7200),
                     scheduledStartTime: startTime,
                     scheduledEndTime: endTime,
@@ -297,8 +297,8 @@ class PrivateParkingViewModel: ObservableObject {
                 slotID: slot.id,
                 driverID: UUID(),
                 hostID: listing.ownerID,
-                driverName: ["Aarav Sharma", "Diya Patel", "Vihaan Kapoor"][i],
-                driverPhone: "+91 99887 \(Int.random(in: 10000...99999))",
+                driverName: ["Aarav Sharma", "Diya Patel", "Vihaan Kapoor"][i % 3],
+                driverPhone: "",
                 vehicleNumber: "DL \(Int.random(in: 1...14)) S \(Int.random(in: 1000...9999))",
                 requestTime: Date().addingTimeInterval(-Double.random(in: 300...3600)),
                 scheduledStartTime: Date().addingTimeInterval(Double.random(in: 1800...7200)),
@@ -314,7 +314,7 @@ class PrivateParkingViewModel: ObservableObject {
                 approvalTime: nil,
                 rejectionReason: nil,
                 accessPIN: nil,
-                driverMessage: ["Need parking for meeting", "Shopping trip", nil][i],
+                driverMessage: ["Need parking for meeting", "Shopping trip", nil][i % 3],
                 hostMessage: nil
             )
             pendingApprovals.append(booking)
@@ -378,7 +378,7 @@ class PrivateParkingViewModel: ObservableObject {
             driverID: UUID(),
             hostID: listing.ownerID,
             driverName: "Current User", // Would come from auth
-            driverPhone: "+91 98765 43210",
+            driverPhone: "",
             vehicleNumber: nil,
             requestTime: Date(),
             scheduledStartTime: startTime,
@@ -643,13 +643,21 @@ class PrivateParkingViewModel: ObservableObject {
     
     /// Delete a listing
     func deleteListing(_ listing: PrivateParkingListing, completion: @escaping (Bool) -> Void) {
-        listings.removeAll { $0.id == listing.id }
-        myListings.removeAll { $0.id == listing.id }
-        
-        // TODO: Sync with backend when API is ready
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            print("✅ Listing deleted: \(listing.title)")
-            completion(true)
+        Task {
+            isLoading = true
+            let success = await SupabaseService.shared.deletePrivateListing(id: listing.id.uuidString)
+            
+            await MainActor.run {
+                if success {
+                    listings.removeAll { $0.id == listing.id }
+                    myListings.removeAll { $0.id == listing.id }
+                    print("✅ Listing deleted from Supabase: \(listing.title)")
+                } else {
+                    errorMessage = "Failed to delete listing"
+                }
+                isLoading = false
+                completion(success)
+            }
         }
     }
     

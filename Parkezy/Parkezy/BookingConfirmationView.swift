@@ -60,14 +60,18 @@ struct BookingConfirmationView: View {
         .navigationTitle("Confirm Booking")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showAccessCode) {
-            if spot.type == .mall {
-                QRDisplayView(booking: bookingViewModel.activeSession!, isPresented: $showAccessCode) {
-                    isPresented = false
+            if let activeSession = bookingViewModel.activeSession {
+                if spot.type == .mall {
+                    QRDisplayView(booking: activeSession, isPresented: $showAccessCode) {
+                        isPresented = false
+                    }
+                } else {
+                    PINEntryView(spot: spot, booking: activeSession, isPresented: $showAccessCode) {
+                        isPresented = false
+                    }
                 }
             } else {
-                PINEntryView(spot: spot, booking: bookingViewModel.activeSession!, isPresented: $showAccessCode) {
-                    isPresented = false
-                }
+                Text("Error loading booking")
             }
         }
         .overlay {

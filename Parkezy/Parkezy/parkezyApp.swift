@@ -26,20 +26,25 @@ struct ParkezyApp: App {
     
     var body: some Scene {
         WindowGroup {
-            // Show auth screen if not authenticated
-            if authViewModel.isAuthenticated {
-                // Main app content
-                RoleSelectionView()
-                    .environmentObject(authViewModel)
-                    .environmentObject(mapViewModel)
-                    .environmentObject(bookingViewModel)
-                    .environmentObject(hostViewModel)
-                    .environmentObject(commercialViewModel)
-                    .environmentObject(privateViewModel)
-            } else {
-                // Login/signup screen
-                AuthenticationView()
-                    .environmentObject(authViewModel)
+            ZStack(alignment: .top) {
+                // Show auth screen if not authenticated
+                if authViewModel.isAuthenticated {
+                    // Main app content
+                    RoleSelectionView()
+                        .environmentObject(authViewModel)
+                        .environmentObject(mapViewModel)
+                        .environmentObject(bookingViewModel)
+                        .environmentObject(hostViewModel)
+                        .environmentObject(commercialViewModel)
+                        .environmentObject(privateViewModel)
+                } else {
+                    // Login/signup screen
+                    AuthenticationView()
+                        .environmentObject(authViewModel)
+                }
+                
+                // Global offline banner — appears at top of all screens
+                OfflineBannerView()
             }
             .task {
                 await authViewModel.restoreSession()

@@ -54,7 +54,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(hostViewModel.currentHost?.name ?? "Host")
                                 .font(.headline)
-                            Text(hostViewModel.currentHost?.email ?? "email@example.com")
+                            Text(hostViewModel.currentHost?.email ?? "")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -170,12 +170,16 @@ struct SettingsView: View {
                         SettingsRow(icon: "headphones", title: "Contact Support", color: .orange)
                     }
                     
-                    Link(destination: URL(string: "https://parkezy.com/terms")!) {
-                        SettingsRow(icon: "doc.text.fill", title: "Terms of Service", color: .gray)
+                    if let termsURL = URL(string: "https://parkezy.com/terms") {
+                        Link(destination: termsURL) {
+                            SettingsRow(icon: "doc.text.fill", title: "Terms of Service", color: .gray)
+                        }
                     }
                     
-                    Link(destination: URL(string: "https://parkezy.com/privacy")!) {
-                        SettingsRow(icon: "hand.raised.fill", title: "Privacy Policy", color: .gray)
+                    if let privacyURL = URL(string: "https://parkezy.com/privacy") {
+                        Link(destination: privacyURL) {
+                            SettingsRow(icon: "hand.raised.fill", title: "Privacy Policy", color: .gray)
+                        }
                     }
                 } header: {
                     Text("Support")
@@ -250,7 +254,7 @@ struct SettingsView: View {
     // MARK: - Methods
     
     private func shareApp() {
-        let url = URL(string: "https://apps.apple.com/app/parkezy")!
+        guard let url = URL(string: "https://apps.apple.com/app/parkezy") else { return }
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -521,16 +525,17 @@ struct ContactSupportView: View {
                 .frame(maxWidth: .infinity)
             }
             
-            Section {
-                Link(destination: URL(string: "tel:+911234567890")!) {
-                    Label("Call Support", systemImage: "phone.fill")
-                }
-                Link(destination: URL(string: "mailto:support@parkezy.com")!) {
-                    Label("Email Support", systemImage: "envelope.fill")
-                }
-            } header: {
-                Text("Other Ways to Reach Us")
-            }
+            // Features removed until implemented
+            // Section {
+            //    Link(destination: URL(string: "tel:+911234567890")!) {
+            //        Label("Call Support", systemImage: "phone.fill")
+            //    }
+            //    Link(destination: URL(string: "mailto:support@parkezy.com")!) {
+            //        Label("Email Support", systemImage: "envelope.fill")
+            //    }
+            // } header: {
+            //    Text("Other Ways to Reach Us")
+            // }
         }
         .navigationTitle("Contact Support")
     }

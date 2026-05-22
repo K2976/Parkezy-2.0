@@ -18,7 +18,10 @@ struct FindParkingIntent: AppIntent {
     
     func perform() async throws -> some IntentResult & OpensIntent {
         // Deep link to map view
-        return .result(opensIntent: OpenURLIntent(URL(string: "parkezy://find")!))
+        guard let url = URL(string: "parkezy://find") else {
+            throw URLError(.badURL)
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -32,7 +35,10 @@ struct ShowParkingTimerIntent: AppIntent {
     
     func perform() async throws -> some IntentResult & OpensIntent {
         // Deep link to active session
-        return .result(opensIntent: OpenURLIntent(URL(string: "parkezy://active-session")!))
+        guard let url = URL(string: "parkezy://active-session") else {
+            throw URLError(.badURL)
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 

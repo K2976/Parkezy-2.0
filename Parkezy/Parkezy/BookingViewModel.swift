@@ -71,7 +71,7 @@ class BookingViewModel: ObservableObject {
     
     func createBooking(spot: ParkingSpot, duration: Double, totalCost: Double) {
         let now = Date()
-        let endTime = Calendar.current.date(byAdding: .minute, value: Int(duration * 60), to: now)!
+        let endTime = Calendar.current.date(byAdding: .minute, value: Int(duration * 60), to: now) ?? now
         
         let session = BookingSession(
             id: UUID(),
@@ -168,7 +168,7 @@ class BookingViewModel: ObservableObject {
             byAdding: .minute,
             value: additionalMinutes,
             to: session.scheduledEndTime
-        )!
+        ) ?? session.scheduledEndTime
         
         session.duration += hours
         
@@ -264,16 +264,14 @@ class BookingViewModel: ObservableObject {
     // MARK: - Live Activity
     
     private func startLiveActivity() {
-        // Live Activity implementation is in ParkingLiveActivity.swift
-        // This would call ActivityKit to start the activity
-        print("🔴 Live Activity started")
+        if #available(iOS 16.2, *) { /* stub — disabled until ActivityKit target is added */ }
     }
     
     private func updateLiveActivity() {
-        // Update the Live Activity with current metrics
+        if #available(iOS 16.2, *) { /* stub — disabled until ActivityKit target is added */ }
     }
     
     private func endLiveActivity() {
-        print("⚪ Live Activity ended")
+        if #available(iOS 16.2, *) { /* stub — disabled until ActivityKit target is added */ }
     }
 }

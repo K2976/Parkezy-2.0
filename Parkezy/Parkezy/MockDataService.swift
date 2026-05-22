@@ -25,6 +25,7 @@ class MockDataService {
     
     // MARK: - Mock Data Generation
     
+    // TESTING ONLY — NOT USED IN PRODUCTION
     private func generateMockSpots() {
         parkingSpots = [
             // Mall Parking
@@ -438,14 +439,17 @@ class MockDataService {
     
     // MARK: - Data Access
     
+    // TESTING ONLY — NOT USED IN PRODUCTION
     func getAvailableSpots() -> [ParkingSpot] {
         parkingSpots.filter { !$0.isOccupied }
     }
     
+    // TESTING ONLY — NOT USED IN PRODUCTION
     func getSpot(by id: UUID) -> ParkingSpot? {
         parkingSpots.first { $0.id == id }
     }
     
+    // TESTING ONLY — NOT USED IN PRODUCTION
     func updateSpotOccupancy(id: UUID, isOccupied: Bool) {
         if let index = parkingSpots.firstIndex(where: { $0.id == id }) {
             parkingSpots[index].isOccupied = isOccupied
