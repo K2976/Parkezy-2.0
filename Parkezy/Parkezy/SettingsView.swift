@@ -24,6 +24,7 @@ struct SettingsView: View {
     @State private var darkModeEnabled = false
     @State private var biometricLockEnabled = false
     @State private var showLogoutAlert = false
+    @State private var showDeleteAccountAlert = false
     
     // MARK: - Body
     
@@ -176,8 +177,10 @@ struct SettingsView: View {
                         }
                     }
                     
-                    if let privacyURL = URL(string: "https://parkezy.com/privacy") {
-                        Link(destination: privacyURL) {
+                    if let privacyURL = URL(string: AppConfig.privacyPolicyURL) {
+                        Button {
+                            UIApplication.shared.open(privacyURL)
+                        } label: {
                             SettingsRow(icon: "hand.raised.fill", title: "Privacy Policy", color: .gray)
                         }
                     }
@@ -210,7 +213,7 @@ struct SettingsView: View {
                     Text("About")
                 }
                 
-                // MARK: - Logout Section
+                // MARK: - Logout & Delete Section
                 
                 Section {
                     Button {
@@ -222,8 +225,25 @@ struct SettingsView: View {
                                 ProgressView()
                             } else {
                                 Text("Log Out")
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.orange)
                                     .fontWeight(.semibold)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(authViewModel.isLoading)
+                    
+                    Button {
+                        showDeleteAccountAlert = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if authViewModel.isLoading {
+                                ProgressView()
+                            } else {
+                                Text("Delete Account")
+                                    .foregroundColor(.red)
+                                    .fontWeight(.bold)
                             }
                             Spacer()
                         }
@@ -247,6 +267,16 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("Are you sure you want to log out?")
+            }
+            .alert("Delete Account", isPresented: $showDeleteAccountAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await authViewModel.deleteAccount()
+                    }
+                }
+            } message: {
+                Text("This will permanently delete your account and all data. This cannot be undone.")
             }
         }
     }

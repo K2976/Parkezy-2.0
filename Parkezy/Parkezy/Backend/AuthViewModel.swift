@@ -141,6 +141,31 @@ final class AuthViewModel: ObservableObject {
         }
     }
     
+    /// Delete user account
+    func deleteAccount() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            // Wait, we need to try to delete the auth user or the profile.
+            // For now, we'll try to delete the profile, which could trigger auth user deletion if set up that way,
+            // or call an RPC. The exact method depends on the backend.
+            if let user = currentUser {
+                try await client.database.from("profiles").delete().eq("id", value: user.id.uuidString).execute()
+            }
+            try await client.auth.signOut()
+            
+            isAuthenticated = false
+            currentUser = nil
+            sessionExpired = false
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+        
+        isLoading = false
+    }
+    
     /// Send password reset email
     func sendPasswordReset(email: String) async {
         isLoading = true

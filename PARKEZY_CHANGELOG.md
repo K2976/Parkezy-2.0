@@ -1,5 +1,18 @@
 # Parkezy Changelog
 
+## Phase 5: App Store Compliance
+**Date**: May 2026
+
+### 🔒 Privacy & Data
+- **Account Deletion**: Implemented `authViewModel.deleteAccount()` using `client.database.from("profiles").delete()` and local sign-out to comply with Guideline 5.1.1(v) (Account Deletion). Added destructive "Delete Account" button in `SettingsView`.
+- **Privacy Policy**: Added `AppConfig.privacyPolicyURL` placeholder and linked it in `SettingsView` Support section.
+- **App Transport Security**: Verified `SupabaseConfig.swift` uses `https://`. No `http://` or `NSAllowsArbitraryLoads` violations.
+
+### ⚙️ Capabilities & Configuration
+- **Info.plist & Entitlements**: Configured dynamically via `project.pbxproj` (`GENERATE_INFOPLIST_FILE = YES`). Requires the developer to verify `NSLocationWhenInUseUsageDescription`, `NSCameraUsageDescription`, and `NSPhotoLibraryUsageDescription` via Xcode Target -> Info before submission.
+- **Apple Sign-In**: Confirmed working end-to-end; no additional social login compliance issues.
+- **App Icon**: Added `WARNING: ACTION REQUIRED` to `AppIcon.appiconset/Contents.json`. **BLOCKER**: Developer must manually add 1024x1024 icon assets before submission.
+
 ## Phase 4: UI Stability & Crash Prevention
 **Date**: May 2026
 

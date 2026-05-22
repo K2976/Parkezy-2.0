@@ -27,6 +27,11 @@ struct AppConfig {
     /// Check if Supabase placeholders have been replaced
     private static var hasSupabaseConfig: Bool {
         // If the URL still contains "PLACEHOLDER", it's not configured
-        !SupabaseConfig.supabaseURL.absoluteString.contains("PLACEHOLDER")
+        !SupabaseConfig.supabaseURLString.contains("PLACEHOLDER")
     }
+    
+    // MARK: - App Links
+    
+    /// Privacy Policy URL Placeholder
+    static let privacyPolicyURL = "YOUR_PRIVACY_POLICY_URL"
 }
