@@ -9,7 +9,7 @@
 import SwiftUI
 import CoreLocation
 import Combine
-import FirebaseAuth
+
 
 @MainActor
 class PrivateParkingViewModel: ObservableObject {
@@ -40,13 +40,6 @@ class PrivateParkingViewModel: ObservableObject {
 
     @Published var filterIsCovered: Bool = false
     
-    /// User Profile
-    @Published var currentUser: UserProfile?
-    
-    // Repository reference (for Firebase mode)
-    private let listingRepo = PrivateListingRepository.shared
-    private let bookingRepo = BookingRepository.shared
-    
     // Timer for countdown updates
     private var countdownTimer: Timer?
     
@@ -57,17 +50,9 @@ class PrivateParkingViewModel: ObservableObject {
     // MARK: - Initialization
     
     init() {
-        if AppConfig.useFirebase {
-            // Load from Backend (Django)
-            Task {
-                await refreshListingsFromBackend()
-            }
-        } else {
-            // Use mock data for development/testing
-            generateMockListings()
-            generateMockBookings()
-            calculateSuggestedPrices()
-        }
+        generateMockListings()
+        generateMockBookings()
+        calculateSuggestedPrices()
         startCountdownTimer()
     }
     
@@ -85,58 +70,6 @@ class PrivateParkingViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Firebase Data Loading
-    
-    /// Load listings and bookings from Firebase
-    // MARK: - Legacy Firebase Data Loading (Removed)
-    
-    // loadFromFirebase removed as we now use refreshListingsFromBackend
-
-    
-    /// Refresh listings from Backend (Django)
-    func refreshListingsFromBackend(near location: CLLocationCoordinate2D? = nil) async {
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            // 1. Fetch ALL listings for Driver View
-            let backendListings = try await ParkingAPIService.shared.getAllPrivateListings()
-            let mappedListings = backendListings.map { $0.toAppModel() }
-            
-            await MainActor.run {
-                self.listings = mappedListings
-            }
-            
-            // 2. Fetch MY listings for Host View (if logged in)
-            if Auth.auth().currentUser != nil {
-                let myListingsResponse = try await ParkingAPIService.shared.getMyPrivateListings()
-                let mappedMyListings = myListingsResponse.map { $0.toAppModel() }
-                
-                await MainActor.run {
-                    self.myListings = mappedMyListings
-                }
-            } else {
-                await MainActor.run {
-                    self.myListings = []
-                }
-            }
-            
-            // 3. Fetch User Profile
-            if Auth.auth().currentUser != nil {
-                await fetchCurrentUser()
-            }
-            
-            await MainActor.run {
-                calculateSuggestedPrices()
-            }
-            
-        } catch {
-            print("❌ Backend fetch failed: \(error.localizedDescription)")
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
     
     // MARK: - Mock Data Generation
     
@@ -423,22 +356,7 @@ class PrivateParkingViewModel: ObservableObject {
     
     /// Request a booking (may require approval)
     func requestBooking(listingID: UUID, slotID: UUID, startTime: Date, endTime: Date, durationType: PrivateBookingDuration, driverMessage: String? = nil) -> PrivateBooking? {
-        // For Firebase mode, use async version
-        if AppConfig.useFirebase {
-            Task {
-                await requestBookingAsync(
-                    listingID: listingID.uuidString,
-                    slotID: slotID.uuidString,
-                    startTime: startTime,
-                    endTime: endTime,
-                    durationType: durationType,
-                    driverMessage: driverMessage
-                )
-            }
-            return nil // Booking created asynchronously
-        }
-        
-        // Mock data path (existing logic)
+
         guard let listingIndex = listings.firstIndex(where: { $0.id == listingID }),
               let slotIndex = listings[listingIndex].slots.firstIndex(where: { $0.id == slotID }) else {
             return nil
@@ -494,34 +412,7 @@ class PrivateParkingViewModel: ObservableObject {
         return booking
     }
     
-    /// Firebase-integrated async booking request
-    func requestBookingAsync(listingID: String, slotID: String, startTime: Date, endTime: Date, durationType: PrivateBookingDuration, driverMessage: String?) async {
-        guard let listing = listings.first(where: { $0.id.uuidString == listingID }) else { return }
-        
-        let rate = listing.hourlyRate
-        let duration = endTime.timeIntervalSince(startTime) / 3600
-        let cost = rate * duration
-        
-        let request = PrivateBookingRequest(
-            listingID: listingID,
-            slotID: slotID,
-            hostID: listing.ownerID.uuidString,
-            scheduledStart: startTime,
-            scheduledEnd: endTime,
-            hourlyRate: rate,
-            estimatedCost: cost * 1.18, // Including GST
-            driverMessage: driverMessage
-        )
-        
-        do {
-            _ = try await bookingRepo.requestPrivateBooking(request)
-            // Refresh listings to show updated availability
-            await refreshListingsFromBackend()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-    
+
     /// Approve a pending booking (host action)
     func approveBooking(_ bookingID: UUID) {
         guard let index = bookings.firstIndex(where: { $0.id == bookingID }) else { return }
