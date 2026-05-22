@@ -9,13 +9,14 @@ This document serves as a detailed audit and technical overview of the Parkezy a
 ## 🏗 System Architecture & Technology Stack
 
 - **Platform:** iOS (Swift, SwiftUI)
-- **Architecture Pattern:** MVVM (Model-View-ViewModel) paired with Repository patterns.
-- **Backend Infrastructure:** Firebase (Authentication, Firestore Database)
+- **Architecture Pattern:** MVVM (Model-View-ViewModel) paired with centralized Services.
+- **Backend Infrastructure:** Supabase (Authentication, PostgreSQL Database, Row Level Security)
 - **Key Frameworks:** 
   - `SwiftUI` for responsive and declarative UI design.
   - `MapKit` & `CoreLocation` for maps, routing, and location services.
   - `ActivityKit` & `WidgetKit` for Live Activities (Dynamic Island / Lock Screen).
   - `VisionKit` for QR Code scanning capabilities.
+  - `AuthenticationServices` & `CryptoKit` for secure Apple Sign-In.
 
 ---
 
@@ -39,31 +40,30 @@ Allows users to monetize their empty parking spaces or manage commercial lots.
 - **Listing Types:**
   - **Private Listings:** For home driveways or personal garages (`PrivateParking.swift`, `PrivateListingDetailView.swift`).
   - **Commercial Facilities:** For malls, hospitals, office spaces (`CommercialParking.swift`, `CommercialFacilityDetailView.swift`).
-- **Pricing Intelligence:** An AI-inspired recommendation view (`PricingIntelligenceView.swift`) that compares the host's hourly rates against regional averages and projects weekly/monthly earnings.
 - **QR Code Scanning:** The host can use the camera to scan a driver's QR code (`QRScannerView.swift`) to validate entries and exits securely.
 
 ---
 
-## 🗄 Backend Data Layer
+## 🗄 Backend Data Layer (Supabase)
 
-The backend uses **Firebase** for cloud data syncing, coupled with a solid Repository pattern to abstract Firebase logic from the presentation layer (ViewModels).
+The backend has been migrated from Firebase/Django to **Supabase**, leveraging PostgreSQL for robust relational data and Row Level Security (RLS).
 
-### Repositories (Stored in `/Backend/`)
-- **`AuthRepository.swift`**: Handles user registration, sign-in, and auth-state persistence.
-- **`UserRepository.swift`**: Manages the user profile model (`AppUser.swift`).
-- **`BookingRepository.swift`**: Creates, updates, and completes booking requests and sessions.
-- **`PrivateListingRepository.swift` & `CommercialFacilityRepository.swift`**: Manage CRUD operations for different parking assets.
+### Services (Stored in `/Backend/`)
+- **`SupabaseConfig.swift`**: Global configuration singleton providing the `SupabaseClient` securely.
+- **`SupabaseService.swift`**: Centralized service handling all database operations, including fetching user profiles, managing private/commercial listings, and tracking bookings. It uses modern Swift concurrency (`async/await`).
+- **`AuthViewModel.swift`**: Handles user registration, sign-in, Apple Sign-In integration, session restoration, and Account Deletion logic.
 
-### Firebase Integration
-- **`FirebaseManager.swift`**: A singleton that acts as the core interface to Firestore, defining root collections:
-  - `users`
-  - `privateListings`
-  - `commercialFacilities`
-  - `bookings`
-- It is instantiated on startup within the `ParkezyApp.swift` (`AppConfig`). offline persistence is strategically enabled via `FirestoreSettings().cacheSettings`.
+### Database Schema
+The database uses a structured SQL schema (`supabase_schema.sql`):
+- `profiles` (Auto-created via Postgres triggers on auth signup)
+- `private_listings`
+- `commercial_facilities`
+- `bookings`
+- `disputes`
 
-### Mock Data & Prototyping
-The application is equipped with a highly detailed `MockDataService.swift` containing pre-populated entries for various locations in Delhi NCR (e.g., Select Citywalk, DLF Promenade, Private Driveways in Greater Kailash, Cyber Hub). This allows fast UI prototyping and simulator debugging without live Firebase connections.
+### Mock Data & Offline State
+- **`MockDataService.swift`**: Contains detailed mock data (Delhi NCR locations) isolated purely for testing/prototyping. It is strictly disabled for production paths.
+- **`NetworkMonitor.swift`**: A global `NWPathMonitor` service that displays a system-wide `OfflineBannerView` to warn users when connectivity drops.
 
 ---
 
@@ -73,6 +73,7 @@ The app utilizes a centralized `DesignSystem.swift` to keep visual consistency a
 
 - **Vibrant & Modern UI:** Uses transparency effects (`.ultraThinMaterial`), drop shadows, and linear gradients to convey a premium feel.
 - **Animations:** View transitions, popup sheets (`SpotDetailSheet.swift`), and interactive sliders are animated smoothly.
+- **Standardized States:** Incorporates reusable `LoadingStateView`, `EmptyStateView`, and `ErrorStateView` components to ensure a consistent experience across all lists and fetching processes.
 - **Dark/Light Mode Ready:** Native SwiftUI colors and custom palettes from `Assets.xcassets` guarantee visual harmony across system appearances.
 - **Monospaced Fonts:** heavily used in `QRScannerView` and receipt details for clarity on numbers and codes.
 
@@ -82,14 +83,16 @@ The app utilizes a centralized `DesignSystem.swift` to keep visual consistency a
 
 1. **Live Activities Integration (`ParkingLiveActivity.swift`)**
    - Implements both widget configurations and lock screen views.
-   - Calculates time variations, flags overstays with UI warnings (red text, alert icons), and dynamically bumps up calculated costs if the driver exceeds their booked duration.
+   - Calculates time variations, flags overstays with UI warnings, and dynamically updates calculated costs.
 
 2. **Scanner & Camera Integration (`QRScannerView.swift`)**
    - Safe Fallbacks: Detects Simulator environments and falls back to a "Mock Scanner View" providing buttons to simulate entries and exits for testing purposes.
    - VisionKit integration correctly restricts payload handling to `Set([.barcode()])`.
 
-3. **Smart Pricing Algorithm Interface**
-   - Provides visual indicators regarding a Host's competitiveness (e.g., `tooExpensive`, `competitive`, `fair`) based on neighborhood average data logic within `PricingIntelligenceView.swift`.
+3. **App Store Compliance Ready**
+   - Implemented standard Account Deletion and Apple Sign-In features.
+   - App Transport Security (ATS) strictly enforced via HTTPS.
+   - Detailed privacy and info permissions isolated for review.
 
 ---
 
@@ -97,11 +100,11 @@ The app utilizes a centralized `DesignSystem.swift` to keep visual consistency a
 
 If the application is scaled up towards production, consider the following technical roadmap:
 
-1. **Environment Separation:** Enhance `AppConfig.swift` to gracefully handle `Dev`, `Staging`, and `Prod` Firebase Plists instead of a hardcoded monolithic project.
-2. **Offline Resilience:** While Firestore handles offline cache natively, edge-case sync conflicts for simultaneous bookings on the same parking spot would require optimistic locking or Cloud Functions (transactional commits) to prevent double-booking.
+1. **Environment Separation:** Enhance `AppConfig.swift` to gracefully handle `Dev`, `Staging`, and `Prod` Supabase URLs instead of a hardcoded monolithic project.
+2. **Offline Resilience:** Implement `SwiftData` or `CoreData` caching layers for offline resilience, backed by Supabase Edge Functions for handling concurrent booking transaction conflicts safely.
 3. **Payment Gateway Integration:** The current system acts as a ledger (`currentCost`, `totalCost`), but real fiat movement would require Stripe or Razorpay backend logic integrations. 
 
 ---
 
 ### Conclusion
-Parkezy's architecture is robust, strictly following modular principles by separating the ViewModels from the Firebase logic. It extensively leverages standard Apple APIs (MapKit, ActivityKit, CoreLocation, Vision) ensuring a deeply native OS experience.
+Parkezy's architecture is robust, strictly following modular principles by separating the ViewModels from the Supabase backend. It extensively leverages standard Apple APIs (MapKit, ActivityKit, CoreLocation, Vision) ensuring a deeply native OS experience.
