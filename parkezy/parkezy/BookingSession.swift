@@ -58,7 +58,26 @@ struct BookingSession: Identifiable, Codable, Hashable {
     static func == (lhs: BookingSession, rhs: BookingSession) -> Bool {
         lhs.id == rhs.id
     }
-    
+
+    // MARK: - Codable (maps to the 'bookings' table; spotID is stored as spot_id
+    // regardless of whether it points at a private_listings or commercial_facilities row)
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case spotID = "spot_id"
+        case userID = "user_id"
+        case bookingTime = "booking_time"
+        case scheduledStartTime = "scheduled_start_time"
+        case actualStartTime = "actual_start_time"
+        case scheduledEndTime = "scheduled_end_time"
+        case actualEndTime = "actual_end_time"
+        case duration
+        case totalCost = "total_cost"
+        case overstayFee = "overstay_fee"
+        case status
+        case accessCode = "access_code"
+    }
+
     // MARK: - Mock Data
     
     static var mockSession: BookingSession {

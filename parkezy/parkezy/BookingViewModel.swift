@@ -68,15 +68,16 @@ class BookingViewModel: ObservableObject {
     }
     
     // MARK: - Booking Creation
-    
-    func createBooking(spot: ParkingSpot, duration: Double, totalCost: Double) {
+
+    func createBooking(spot: ParkingSpot, duration: Double, totalCost: Double) async {
         let now = Date()
         let endTime = Calendar.current.date(byAdding: .minute, value: Int(duration * 60), to: now) ?? now
-        
+        let userID = (try? await SupabaseConfig.client.auth.session)?.user.id ?? UUID()
+
         let session = BookingSession(
             id: UUID(),
             spotID: spot.id,
-            userID: UUID(), // In production, get from auth
+            userID: userID,
             bookingTime: now,
             scheduledStartTime: now,
             actualStartTime: nil,
@@ -88,17 +89,19 @@ class BookingViewModel: ObservableObject {
             status: .confirmed,
             accessCode: spot.accessPIN ?? String(format: "%06d", Int.random(in: 100000...999999))
         )
-        
+
         activeSession = session
         currentSpot = spot
         isSessionActive = false // Not started until verified
-        
+
         // Start geofence monitoring
         LocationManager.shared.monitorGeofence(for: spot.id, at: spot.coordinates)
-        
+
         // Schedule notifications
         NotificationManager.shared.scheduleSessionWarnings(for: session)
-        
+
+        _ = await SupabaseService.shared.createBookingSession(session)
+
         print("✅ Booking created: \(session.id.uuidString.prefix(8))")
     }
     
@@ -121,42 +124,44 @@ class BookingViewModel: ObservableObject {
         print("▶️ Session started: \(session.id.uuidString.prefix(8))")
     }
     
-    func endSession() {
+    func endSession() async {
         guard var session = activeSession else { return }
-        
+
         session.actualEndTime = Date()
         session.status = .completed
-        
+
         // Calculate final overstay
         if let startTime = session.actualStartTime {
             let actualDuration = Date().timeIntervalSince(startTime)
             let scheduledDuration = session.scheduledEndTime.timeIntervalSince(startTime)
-            
+
             if actualDuration > scheduledDuration {
                 let overstayMinutes = (actualDuration - scheduledDuration) / 60
                 session.overstayFee = ceil(overstayMinutes / 15) * 20
                 session.totalCost += session.overstayFee ?? 0
             }
         }
-        
+
         lastCompletedSession = session
         bookingHistory.append(session)
-        
+
         // Cleanup
         stopTimer()
         endLiveActivity()
         NotificationManager.shared.cancelSessionWarnings(for: session)
-        
+
         if let spot = currentSpot {
             LocationManager.shared.stopMonitoringGeofence(for: spot.id)
-            MockDataService.shared.updateSpotOccupancy(id: spot.id, isOccupied: false)
+            _ = await SupabaseService.shared.updateParkingSpotOccupancy(id: spot.id, isOccupied: false)
         }
-        
+
+        _ = await SupabaseService.shared.updateBookingSession(session)
+
         activeSession = nil
         currentSpot = nil
         isSessionActive = false
         overstayFee = nil
-        
+
         print("⏹️ Session ended: \(session.id.uuidString.prefix(8))")
     }
     

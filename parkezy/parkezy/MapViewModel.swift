@@ -47,11 +47,12 @@ class MapViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
-    
+
     init() {
         setupLocationObserver()
+        Task { await loadParkingSpots() }
     }
-    
+
     // MARK: - Setup
     
     private func setupLocationObserver() {
@@ -66,9 +67,9 @@ class MapViewModel: ObservableObject {
     }
     
     // MARK: - Data Loading
-    
-    func loadParkingSpots() {
-        spots = MockDataService.shared.parkingSpots
+
+    func loadParkingSpots() async {
+        spots = await SupabaseService.shared.getParkingSpots()
         updateDistances()
         updateNearestSpot()
     }

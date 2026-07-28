@@ -32,7 +32,10 @@ class PrivateParkingViewModel: ObservableObject {
     
     /// Current host's listings (when in host mode)
     @Published var myListings: [PrivateParkingListing] = []
-    
+
+    /// Current signed-in user's profile (used to scope "my listings"/"my bookings")
+    @Published var currentUser: AppUser?
+
     /// Filters
     @Published var filterMinPrice: Double?
     @Published var filterMaxPrice: Double?
@@ -50,18 +53,16 @@ class PrivateParkingViewModel: ObservableObject {
     // MARK: - Initialization
     
     init() {
-        generateMockListings()
-        generateMockBookings()
-        calculateSuggestedPrices()
         startCountdownTimer()
+        Task { await refreshListingsFromBackend() }
     }
-    
+
     deinit {
         countdownTimer?.invalidate()
     }
-    
+
     // MARK: - Countdown Timer
-    
+
     private func startCountdownTimer() {
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -69,114 +70,36 @@ class PrivateParkingViewModel: ObservableObject {
             }
         }
     }
-    
-    
-    // MARK: - Mock Data Generation
-    
-    private func generateMockListings() {
-        let ownerID = UUID() // Current host
-        
-        listings = [
-            // GK-1 area listings
-            createListing(
-                title: "Covered Driveway in GK-1",
-                address: "M-45, Greater Kailash 1",
-                lat: 28.5494, lon: 77.2344,
-                slots: 2, hourly: 45, daily: 350, monthly: 3200,
-                isCovered: true, hasEV: false, ownerID: ownerID, ownerName: "Priya Sharma"
-            ),
-            createListing(
-                title: "Secure Garage Parking",
-                address: "C-12, Greater Kailash 2",
-                lat: 28.5398, lon: 77.2420,
-                slots: 1, hourly: 55, daily: 400, monthly: 3800,
-                isCovered: true, hasEV: true, ownerID: ownerID, ownerName: "Rahul Mehta"
-            ),
-            
-            // Defence Colony
-            createListing(
-                title: "Open Driveway Space",
-                address: "A-23, Defence Colony",
-                lat: 28.5742, lon: 77.2310,
-                slots: 3, hourly: 35, daily: 280, monthly: 2800,
-                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Amit Singh"
-            ),
-            createListing(
-                title: "Premium Basement Parking",
-                address: "B-Block, Defence Colony",
-                lat: 28.5720, lon: 77.2335,
-                slots: 2, hourly: 60, daily: 450, monthly: 4200,
-                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Neha Gupta"
-            ),
-            
-            // Hauz Khas
-            createListing(
-                title: "Artist Colony Parking",
-                address: "Hauz Khas Village",
-                lat: 28.5494, lon: 77.2001,
-                slots: 1, hourly: 40, daily: 300, monthly: 3000,
-                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Vikram Bhatia"
-            ),
-            
-            // Vasant Vihar
-            createListing(
-                title: "Secure Home Parking",
-                address: "C-45, Vasant Vihar",
-                lat: 28.5612, lon: 77.1598,
-                slots: 2, hourly: 50, daily: 380, monthly: 3600,
-                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Sunita Kapoor"
-            ),
-            
-            // Green Park
-            createListing(
-                title: "Convenient Street Parking",
-                address: "Green Park Extension",
-                lat: 28.5598, lon: 77.2089,
-                slots: 2, hourly: 30, daily: 250, monthly: 2500,
-                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Rajesh Kumar"
-            ),
-            
-            // Lajpat Nagar
-            createListing(
-                title: "Market Area Parking",
-                address: "Lajpat Nagar II",
-                lat: 28.5680, lon: 77.2408,
-                slots: 4, hourly: 35, daily: 270, monthly: 2700,
-                isCovered: true, hasEV: false, ownerID: UUID(), ownerName: "Pooja Verma"
-            ),
-            
-            // Noida
-            createListing(
-                title: "Society Visitor Parking",
-                address: "Sector 62, Noida",
-                lat: 28.6273, lon: 77.3649,
-                slots: 3, hourly: 25, daily: 200, monthly: 2000,
-                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Arun Joshi"
-            ),
-            
-            // Gurugram
-            createListing(
-                title: "Luxury Villa Parking",
-                address: "DLF Phase 4, Gurugram",
-                lat: 28.4650, lon: 77.0920,
-                slots: 3, hourly: 70,
-                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Kavita Malhotra"
-            ),
-            createListing(
-                title: "Budget Friendly Spot",
-                address: "Sushant Lok, Gurugram",
-                lat: 28.4698, lon: 77.0715,
-                slots: 1, hourly: 30, daily: 220, monthly: 2200,
-                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Deepak Arora"
-            )
-        ]
-        
-        
-        
-        // Filter "my listings" to strictly match the current mock owner
-        myListings = listings.filter { $0.ownerID == ownerID }
+
+    // MARK: - Data Loading
+
+    /// Fetches listings (and, if signed in, the current host's own listings/booking requests) from Supabase.
+    /// `coordinate` is accepted for a future radius-scoped query; today it fetches all listings.
+    func refreshListingsFromBackend(near coordinate: CLLocationCoordinate2D? = nil) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        if currentUser == nil, let session = try? await SupabaseConfig.client.auth.session {
+            currentUser = await SupabaseService.shared.getUserProfile(id: session.user.id.uuidString)
+        }
+
+        listings = await SupabaseService.shared.getAllPrivateListings()
+        calculateSuggestedPrices()
+
+        guard let ownerID = currentUser?.id else {
+            myListings = []
+            return
+        }
+
+        myListings = listings.filter { $0.ownerID.uuidString == ownerID }
+
+        let requests = await SupabaseService.shared.getPrivateBookingRequests(hostID: ownerID)
+        bookings = requests
+        pendingApprovals = requests.filter { $0.status == .pendingApproval }
+        activeBookings = requests.filter { $0.status == .active }
     }
-    
+
     private func createListing(
         title: String, address: String, lat: Double, lon: Double,
         slots: Int, hourly: Double, daily: Double = 300, monthly: Double = 3000,
@@ -240,90 +163,6 @@ class PrivateParkingViewModel: ObservableObject {
         return slots
     }
     
-    private func generateMockBookings() {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // Generate bookings for listings
-        for listing in listings {
-            // Completed bookings
-            for _ in 0..<Int.random(in: 3...10) {
-                guard let slot = listing.slots.randomElement() else { continue }
-                let daysAgo = Int.random(in: 1...30)
-                let startTime = calendar.date(byAdding: .day, value: -daysAgo, to: now) ?? now
-                let durationType: PrivateBookingDuration = [.hourly, .daily].randomElement() ?? .hourly
-                let duration = durationType == .hourly ? Double.random(in: 2...8) : 24
-                let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime) ?? startTime
-                let rate = durationType == .hourly ? listing.hourlyRate : listing.dailyRate
-                
-                let booking = PrivateBooking(
-                    id: UUID(),
-                    listingID: listing.id,
-                    slotID: slot.id,
-                    driverID: UUID(),
-                    hostID: listing.ownerID,
-                    driverName: ["Rohit", "Sneha", "Arjun", "Meera", "Karan"].randomElement() ?? "Guest",
-                    driverPhone: "",
-                    vehicleNumber: "DL \(Int.random(in: 1...14)) \((["A", "B", "C", "S"].randomElement() ?? "A")) \(Int.random(in: 1000...9999))",
-                    requestTime: startTime.addingTimeInterval(-7200),
-                    scheduledStartTime: startTime,
-                    scheduledEndTime: endTime,
-                    actualStartTime: startTime,
-                    actualEndTime: endTime,
-                    durationType: durationType,
-                    agreedRate: rate,
-                    estimatedCost: rate * (durationType == .hourly ? duration : 1),
-                    actualCost: rate * (durationType == .hourly ? duration : 1),
-                    hostEarnings: rate * (durationType == .hourly ? duration : 1) * 0.85,
-                    status: .completed,
-                    approvalTime: startTime.addingTimeInterval(-3600),
-                    rejectionReason: nil,
-                    accessPIN: String(format: "%06d", Int.random(in: 100000...999999)),
-                    driverMessage: nil,
-                    hostMessage: nil
-                )
-                bookings.append(booking)
-            }
-        }
-        
-        // Add some pending approvals for host demo
-        for i in 0..<3 {
-            let listing = myListings[i % myListings.count]
-            guard let slot = listing.slots.first(where: { !$0.isOccupied }) else { continue }
-            
-            let booking = PrivateBooking(
-                id: UUID(),
-                listingID: listing.id,
-                slotID: slot.id,
-                driverID: UUID(),
-                hostID: listing.ownerID,
-                driverName: ["Aarav Sharma", "Diya Patel", "Vihaan Kapoor"][i % 3],
-                driverPhone: "",
-                vehicleNumber: "DL \(Int.random(in: 1...14)) S \(Int.random(in: 1000...9999))",
-                requestTime: Date().addingTimeInterval(-Double.random(in: 300...3600)),
-                scheduledStartTime: Date().addingTimeInterval(Double.random(in: 1800...7200)),
-                scheduledEndTime: Date().addingTimeInterval(Double.random(in: 14400...28800)),
-                actualStartTime: nil,
-                actualEndTime: nil,
-                durationType: .hourly,
-                agreedRate: listing.hourlyRate,
-                estimatedCost: listing.hourlyRate * Double.random(in: 2...6),
-                actualCost: nil,
-                hostEarnings: nil,
-                status: .pendingApproval,
-                approvalTime: nil,
-                rejectionReason: nil,
-                accessPIN: nil,
-                driverMessage: ["Need parking for meeting", "Shopping trip", nil][i % 3],
-                hostMessage: nil
-            )
-            pendingApprovals.append(booking)
-            bookings.append(booking)
-        }
-        
-        activeBookings = bookings.filter { $0.status == .active }
-    }
-    
     // MARK: - Pricing Intelligence
     
     /// Calculate suggested prices based on nearby listings
@@ -371,14 +210,16 @@ class PrivateParkingViewModel: ObservableObject {
         let duration = endTime.timeIntervalSince(startTime) / 3600
         let cost = rate * duration
         
+        let driverID = currentUser.flatMap { UUID(uuidString: $0.id) } ?? UUID()
+
         let booking = PrivateBooking(
             id: UUID(),
             listingID: listingID,
             slotID: slotID,
-            driverID: UUID(),
+            driverID: driverID,
             hostID: listing.ownerID,
-            driverName: "Current User", // Would come from auth
-            driverPhone: "",
+            driverName: currentUser?.name ?? "Current User",
+            driverPhone: currentUser?.phoneNumber ?? "",
             vehicleNumber: nil,
             requestTime: Date(),
             scheduledStartTime: startTime,
@@ -397,9 +238,9 @@ class PrivateParkingViewModel: ObservableObject {
             driverMessage: driverMessage,
             hostMessage: nil
         )
-        
+
         bookings.append(booking)
-        
+
         if listing.autoAcceptBookings {
             // Update slot immediately
             listings[listingIndex].slots[slotIndex].isOccupied = true
@@ -408,19 +249,21 @@ class PrivateParkingViewModel: ObservableObject {
         } else {
             pendingApprovals.append(booking)
         }
-        
+
+        Task { _ = await SupabaseService.shared.createPrivateBookingRequest(booking) }
+
         return booking
     }
-    
+
 
     /// Approve a pending booking (host action)
     func approveBooking(_ bookingID: UUID) {
         guard let index = bookings.firstIndex(where: { $0.id == bookingID }) else { return }
-        
+
         bookings[index].status = .approved
         bookings[index].approvalTime = Date()
         bookings[index].accessPIN = String(format: "%06d", Int.random(in: 100000...999999))
-        
+
         // Update slot
         if let listingIndex = listings.firstIndex(where: { $0.id == bookings[index].listingID }),
            let slotIndex = listings[listingIndex].slots.firstIndex(where: { $0.id == bookings[index].slotID }) {
@@ -428,18 +271,24 @@ class PrivateParkingViewModel: ObservableObject {
             listings[listingIndex].slots[slotIndex].currentBookingID = bookingID
             listings[listingIndex].slots[slotIndex].bookingEndTime = bookings[index].scheduledEndTime
         }
-        
+
         pendingApprovals.removeAll { $0.id == bookingID }
+
+        let updated = bookings[index]
+        Task { _ = await SupabaseService.shared.updatePrivateBookingRequest(updated) }
     }
-    
+
     /// Reuse the rejection logic
     func rejectBooking(_ bookingID: UUID, reason: String?) {
         guard let index = bookings.firstIndex(where: { $0.id == bookingID }) else { return }
-        
+
         bookings[index].status = .rejected
         bookings[index].rejectionReason = reason
-        
+
         pendingApprovals.removeAll { $0.id == bookingID }
+
+        let updated = bookings[index]
+        Task { _ = await SupabaseService.shared.updatePrivateBookingRequest(updated) }
     }
     
     // MARK: - Listing Management
@@ -576,11 +425,11 @@ class PrivateParkingViewModel: ObservableObject {
         photoData: [Data],
         description: String
     ) {
-        let ownerID = myListings.first?.ownerID ?? UUID()
-        let ownerName = myListings.first?.ownerName ?? "Current User"
-        
+        let ownerID = currentUser.flatMap { UUID(uuidString: $0.id) } ?? myListings.first?.ownerID ?? UUID()
+        let ownerName = currentUser?.name ?? myListings.first?.ownerName ?? "Current User"
+
         let newSlots = generatePrivateSlots(count: slots)
-        
+
         let newListing = PrivateParkingListing(
             id: UUID(),
             ownerID: ownerID,
@@ -613,22 +462,25 @@ class PrivateParkingViewModel: ObservableObject {
             maxBookingDuration: .unlimited,
             suggestedHourlyRate: nil
         )
-        
+
         listings.insert(newListing, at: 0)
         myListings.insert(newListing, at: 0)
-        
+
         // Calculate suggested prices including the new listing
         calculateSuggestedPrices()
+
+        Task { _ = await SupabaseService.shared.createPrivateListing(newListing) }
     }
-    
+
     /// Update an existing listing
     func updateListing(_ updatedListing: PrivateParkingListing, completion: @escaping (Bool) -> Void) {
         Task {
             isLoading = true
             defer { isLoading = false }
-            
-            // Update local state
-            await MainActor.run {
+
+            let success = await SupabaseService.shared.updatePrivateListing(updatedListing)
+
+            if success {
                 if let index = self.listings.firstIndex(where: { $0.id == updatedListing.id }) {
                     self.listings[index] = updatedListing
                 }
@@ -636,8 +488,10 @@ class PrivateParkingViewModel: ObservableObject {
                     self.myListings[index] = updatedListing
                 }
                 self.calculateSuggestedPrices()
-                completion(true)
+            } else {
+                self.errorMessage = "Failed to update listing"
             }
+            completion(success)
         }
     }
     
@@ -660,10 +514,6 @@ class PrivateParkingViewModel: ObservableObject {
             }
         }
     }
-    
-    /// Refresh listings from Django backend
-    // Duplicate refreshListingsFromBackend removed
-
     
     // MARK: - Computed Properties
     

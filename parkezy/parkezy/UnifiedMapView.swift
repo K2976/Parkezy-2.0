@@ -304,7 +304,7 @@ struct UnifiedMapView: View {
         await privateViewModel.refreshListingsFromBackend(near: location)
             
         // Load commercial facilities
-        // await commercialViewModel.refreshFacilitiesFromBackend(near: location)
+        await commercialViewModel.refreshFacilitiesFromBackend(near: location)
             
         print("🔄 Refreshed parking data from backend")
     }

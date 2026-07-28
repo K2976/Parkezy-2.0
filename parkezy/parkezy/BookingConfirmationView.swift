@@ -396,11 +396,13 @@ struct BookingConfirmationView: View {
             }
             
             // Create booking
-            bookingViewModel.createBooking(
-                spot: spot,
-                duration: selectedDuration,
-                totalCost: totalCost
-            )
+            Task {
+                await bookingViewModel.createBooking(
+                    spot: spot,
+                    duration: selectedDuration,
+                    totalCost: totalCost
+                )
+            }
             
             // Show access code after brief delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {

@@ -14,7 +14,7 @@ import SwiftUI
 
 /// Represents a commercial parking facility (Mall, Office, Apartment complex)
 /// Contains multiple slots that can be booked independently
-struct CommercialParkingFacility: Identifiable, Hashable {
+struct CommercialParkingFacility: Identifiable, Hashable, Codable {
     let id: UUID
     var name: String
     var address: String
@@ -46,13 +46,98 @@ struct CommercialParkingFacility: Identifiable, Hashable {
     var ownerName: String
     
     // MARK: - Hashable
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: CommercialParkingFacility, rhs: CommercialParkingFacility) -> Bool {
         lhs.id == rhs.id
+    }
+
+    // MARK: - Codable (maps to the 'commercial_facilities' table; lat/lng columns <-> coordinates)
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, address
+        case lat, lng
+        case facilityType = "facility_type"
+        case slots
+        case defaultHourlyRate = "default_hourly_rate"
+        case flatDayRate = "flat_day_rate"
+        case hasCCTV = "has_cctv"
+        case hasEVCharging = "has_ev_charging"
+        case hasValetService = "has_valet_service"
+        case hasCarWash = "has_car_wash"
+        case is24Hours = "is_24_hours"
+        case rating
+        case reviewCount = "review_count"
+        case ownerID = "owner_id"
+        case ownerName = "owner_name"
+    }
+
+    init(id: UUID, name: String, address: String, coordinates: CLLocationCoordinate2D, facilityType: CommercialFacilityType, slots: [CommercialParkingSlot], defaultHourlyRate: Double, flatDayRate: Double? = nil, hasCCTV: Bool, hasEVCharging: Bool, hasValetService: Bool, hasCarWash: Bool, is24Hours: Bool, rating: Double, reviewCount: Int, ownerID: UUID, ownerName: String) {
+        self.id = id
+        self.name = name
+        self.address = address
+        self.coordinates = coordinates
+        self.facilityType = facilityType
+        self.slots = slots
+        self.defaultHourlyRate = defaultHourlyRate
+        self.flatDayRate = flatDayRate
+        self.hasCCTV = hasCCTV
+        self.hasEVCharging = hasEVCharging
+        self.hasValetService = hasValetService
+        self.hasCarWash = hasCarWash
+        self.is24Hours = is24Hours
+        self.rating = rating
+        self.reviewCount = reviewCount
+        self.ownerID = ownerID
+        self.ownerName = ownerName
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        address = try container.decode(String.self, forKey: .address)
+        let lat = try container.decode(Double.self, forKey: .lat)
+        let lng = try container.decode(Double.self, forKey: .lng)
+        coordinates = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        facilityType = try container.decode(CommercialFacilityType.self, forKey: .facilityType)
+        slots = try container.decode([CommercialParkingSlot].self, forKey: .slots)
+        defaultHourlyRate = try container.decode(Double.self, forKey: .defaultHourlyRate)
+        flatDayRate = try container.decodeIfPresent(Double.self, forKey: .flatDayRate)
+        hasCCTV = try container.decode(Bool.self, forKey: .hasCCTV)
+        hasEVCharging = try container.decode(Bool.self, forKey: .hasEVCharging)
+        hasValetService = try container.decode(Bool.self, forKey: .hasValetService)
+        hasCarWash = try container.decode(Bool.self, forKey: .hasCarWash)
+        is24Hours = try container.decode(Bool.self, forKey: .is24Hours)
+        rating = try container.decode(Double.self, forKey: .rating)
+        reviewCount = try container.decode(Int.self, forKey: .reviewCount)
+        ownerID = try container.decode(UUID.self, forKey: .ownerID)
+        ownerName = try container.decode(String.self, forKey: .ownerName)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(address, forKey: .address)
+        try container.encode(coordinates.latitude, forKey: .lat)
+        try container.encode(coordinates.longitude, forKey: .lng)
+        try container.encode(facilityType, forKey: .facilityType)
+        try container.encode(slots, forKey: .slots)
+        try container.encode(defaultHourlyRate, forKey: .defaultHourlyRate)
+        try container.encodeIfPresent(flatDayRate, forKey: .flatDayRate)
+        try container.encode(hasCCTV, forKey: .hasCCTV)
+        try container.encode(hasEVCharging, forKey: .hasEVCharging)
+        try container.encode(hasValetService, forKey: .hasValetService)
+        try container.encode(hasCarWash, forKey: .hasCarWash)
+        try container.encode(is24Hours, forKey: .is24Hours)
+        try container.encode(rating, forKey: .rating)
+        try container.encode(reviewCount, forKey: .reviewCount)
+        try container.encode(ownerID, forKey: .ownerID)
+        try container.encode(ownerName, forKey: .ownerName)
     }
 }
 
@@ -92,7 +177,7 @@ enum CommercialFacilityType: String, CaseIterable, Codable {
 // MARK: - Commercial Parking Slot
 
 /// Individual parking slot within a commercial facility
-struct CommercialParkingSlot: Identifiable, Hashable {
+struct CommercialParkingSlot: Identifiable, Hashable, Codable {
     let id: UUID
     var slotNumber: String // e.g., "A-01", "B-12", "EV-03"
     var slotType: CommercialSlotType
@@ -177,39 +262,61 @@ enum CommercialSlotType: String, CaseIterable, Codable {
 // MARK: - Commercial Booking
 
 /// Booking record for commercial parking - ALWAYS AUTO-APPROVED
-struct CommercialBooking: Identifiable, Hashable {
+struct CommercialBooking: Identifiable, Hashable, Codable {
     let id: UUID
     let facilityID: UUID
     let slotID: UUID
     let driverID: UUID
-    
+
     // Timing
     let bookingTime: Date // When booking was made
     let scheduledStartTime: Date
     let scheduledEndTime: Date
     var actualStartTime: Date?
     var actualEndTime: Date?
-    
+
     // Pricing
     let hourlyRate: Double
     let estimatedDuration: Double // Hours
     let estimatedCost: Double
     var actualCost: Double?
-    
+
     // Vehicle
     var vehicleNumber: String?
     var vehicleType: String?
-    
+
     // Status
     var status: CommercialBookingStatus
-    
+
     // QR/Access
     let accessCode: String // 6-digit code
     var qrCodeData: String { "PARKEZY-COM:\(id.uuidString):\(slotID.uuidString)" }
-    
+
     // Computed
     var isActive: Bool { status == .active }
     var isCompleted: Bool { status == .completed }
+
+    // MARK: - Codable (maps to the 'commercial_bookings' table)
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case facilityID = "facility_id"
+        case slotID = "slot_id"
+        case driverID = "driver_id"
+        case bookingTime = "booking_time"
+        case scheduledStartTime = "scheduled_start_time"
+        case scheduledEndTime = "scheduled_end_time"
+        case actualStartTime = "actual_start_time"
+        case actualEndTime = "actual_end_time"
+        case hourlyRate = "hourly_rate"
+        case estimatedDuration = "estimated_duration"
+        case estimatedCost = "estimated_cost"
+        case actualCost = "actual_cost"
+        case vehicleNumber = "vehicle_number"
+        case vehicleType = "vehicle_type"
+        case status
+        case accessCode = "access_code"
+    }
 }
 
 // MARK: - Commercial Booking Status

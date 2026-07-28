@@ -12,10 +12,10 @@ import Supabase
 final class SupabaseConfig {
     
     // MARK: - Supabase Credentials
-    // ⚠️ These are placeholder keys. DO NOT commit real keys to source control.
-    // Fill these in manually in your local environment.
-    private static let supabaseURLString = "https://PLACEHOLDER_SUPABASE_PROJECT_URL.supabase.co"
-    static let supabaseAnonKey = "PLACEHOLDER_SUPABASE_ANON_KEY"
+    // The anon key is safe to ship in client code — Row Level Security on every
+    // table is what actually enforces access control, not secrecy of this key.
+    static let supabaseURLString = "https://zhpwqvetlpktlvcitygh.supabase.co"
+    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpocHdxdmV0bHBrdGx2Y2l0eWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzE1MzAsImV4cCI6MjA5NTAwNzUzMH0.hfJqRaYGrKJOFp9Rlce2BRsNjNHOfuLIlMCG_irbG6I"
     
     // MARK: - Shared Client
     static let client: SupabaseClient = {

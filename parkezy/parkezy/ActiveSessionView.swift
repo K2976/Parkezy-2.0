@@ -446,8 +446,8 @@ struct ActiveSessionView: View {
     }
     
     private func endSession() {
-        bookingViewModel.endSession()
-        
+        Task { await bookingViewModel.endSession() }
+
         // Haptic feedback
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         
@@ -490,7 +490,8 @@ struct QuickActionButton: View {
 struct ExtendSessionSheet: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var bookingViewModel: BookingViewModel
-    
+    @EnvironmentObject var mapViewModel: MapViewModel
+
     @State private var extensionMinutes: Double = 30
     @State private var isProcessing = false
     
@@ -572,7 +573,7 @@ struct ExtendSessionSheet: View {
     
     private var extensionCost: Double {
         guard let session = bookingViewModel.activeSession,
-              let spot = MockDataService.shared.parkingSpots.first(where: { $0.id == session.spotID }) else {
+              let spot = mapViewModel.spots.first(where: { $0.id == session.spotID }) else {
             return 0
         }
         let hours = extensionMinutes / 60

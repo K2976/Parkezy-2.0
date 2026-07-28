@@ -16,7 +16,8 @@ struct DisputeView: View {
     // MARK: - Environment
     
     @EnvironmentObject var bookingViewModel: BookingViewModel
-    
+    @EnvironmentObject var authViewModel: AuthViewModel
+
     // MARK: - State
     
     @State private var selectedReason: DisputeReason = .spotUnavailable
@@ -257,28 +258,30 @@ struct DisputeView: View {
     
     private func submitDispute() {
         isSubmitting = true
-        
-        // Simulate API call
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            // Create dispute report
-            if let session = bookingViewModel.activeSession {
-                let dispute = DisputeReport(
-                    id: UUID(),
-                    bookingID: session.id,
-                    reason: selectedReason.rawValue,
-                    description: additionalDetails,
-                    photoURLs: [],
-                    status: .pending,
-                    createdAt: Date()
-                )
-                
-                // In production, submit to backend
-                print("Dispute submitted: \(dispute)")
-            }
-            
+
+        guard let session = bookingViewModel.activeSession,
+              let reporterID = authViewModel.currentUser.flatMap({ UUID(uuidString: $0.id) }) else {
+            isSubmitting = false
+            return
+        }
+
+        let dispute = DisputeReport(
+            id: UUID(),
+            bookingID: session.id,
+            reporterID: reporterID,
+            reason: selectedReason.rawValue,
+            description: additionalDetails,
+            photoURLs: [],
+            status: .pending,
+            createdAt: Date()
+        )
+
+        Task {
+            _ = await SupabaseService.shared.createDispute(dispute)
+
             isSubmitting = false
             showSuccess = true
-            
+
             // Haptic feedback
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         }

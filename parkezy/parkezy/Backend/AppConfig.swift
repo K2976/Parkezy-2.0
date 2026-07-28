@@ -21,8 +21,8 @@ struct AppConfig {
         #endif
     }
     
-    /// Override for testing (DEBUG only)
-    static var _useSupabaseOverride: Bool? = false
+    /// Override for testing (DEBUG only) — nil defers to hasSupabaseConfig
+    static var _useSupabaseOverride: Bool? = nil
     
     /// Check if Supabase placeholders have been replaced
     private static var hasSupabaseConfig: Bool {

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status *)",
+      "Bash(git check-ignore *)",
+      "Bash(xcodebuild -version)",
+      "Bash(xcode-select -p)"
+    ]
+  }
+}
