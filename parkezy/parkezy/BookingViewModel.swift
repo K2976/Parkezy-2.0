@@ -7,6 +7,8 @@
 
 import SwiftUI
 import Combine
+import Supabase
+import Auth
 
 @MainActor
 class BookingViewModel: ObservableObject {

@@ -8,6 +8,8 @@
 import SwiftUI
 import CoreLocation
 import Combine
+import Supabase
+import Auth
 
 @MainActor
 class HostViewModel: ObservableObject {

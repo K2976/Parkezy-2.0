@@ -151,7 +151,7 @@ final class AuthViewModel: ObservableObject {
             // For now, we'll try to delete the profile, which could trigger auth user deletion if set up that way,
             // or call an RPC. The exact method depends on the backend.
             if let user = currentUser {
-                try await client.database.from("profiles").delete().eq("id", value: user.id.uuidString).execute()
+                try await client.database.from("profiles").delete().eq("id", value: user.id).execute()
             }
             try await client.auth.signOut()
             

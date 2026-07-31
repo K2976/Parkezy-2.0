@@ -7,6 +7,8 @@
 
 import Foundation
 import CoreLocation
+import Supabase
+import PostgREST
 
 @MainActor
 final class SupabaseService {

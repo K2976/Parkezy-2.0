@@ -4,7 +4,8 @@
       "Bash(git status *)",
       "Bash(git check-ignore *)",
       "Bash(xcodebuild -version)",
-      "Bash(xcode-select -p)"
+      "Bash(xcode-select -p)",
+      "Bash(xcodebuild -scheme parkezy -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' build)"
     ]
   }
 }

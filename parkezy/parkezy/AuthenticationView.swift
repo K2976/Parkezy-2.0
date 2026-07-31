@@ -31,20 +31,20 @@ struct AuthenticationView: View {
                     
                     // Auth Buttons
                     buttonSection
-                    
+
+                    // Toggle Sign Up / Sign In
+                    toggleSection
+
                     // Divider
                     dividerSection
-                    
+
                     // Apple Sign-In
                     appleSignInButton
-                    
+
                     // Quick Test Login (Development Only)
                     #if DEBUG
                     // testLoginButton
                     #endif
-                    
-                    // Toggle Sign Up / Sign In
-                    toggleSection
                 }
                 .padding(DesignSystem.Spacing.l)
             }
