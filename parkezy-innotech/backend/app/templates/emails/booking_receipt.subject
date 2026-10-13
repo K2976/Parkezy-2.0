@@ -1,0 +1,1 @@
+Receipt · {{ listing_title }} · {{ currency }} {{ total }}

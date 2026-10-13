@@ -1,0 +1,4 @@
+Hi {{ driver_name }},
+
+{{ headline }}. {{ detail }}
+{{ listing_title }}, slot {{ slot_label }}, {{ starts_at }} to {{ ends_at }}

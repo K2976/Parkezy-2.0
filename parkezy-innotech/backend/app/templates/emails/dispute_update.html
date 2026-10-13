@@ -1,0 +1,5 @@
+{% extends "_base.html" %}{% block content %}
+<p>Hi {{ name }},</p>
+<p>Your report is now <strong>{{ status | replace("_", " ") }}</strong>.</p>
+{% if resolution %}<p>{{ resolution }}</p>{% endif %}
+{% endblock %}
