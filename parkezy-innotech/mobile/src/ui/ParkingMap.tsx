@@ -1,7 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Circle, Marker, UrlTile } from 'react-native-maps';
 
 import type { ListingSearchItem } from '@/api/types';
 import { Text } from '@/ui/components';
@@ -19,13 +19,15 @@ type Props = {
   items: ListingSearchItem[];
   showsUserLocation: boolean;
   userLocation?: { latitude: number; longitude: number; heading?: number } | null;
+  /** Radius in metres of the "near you" zone drawn around the user's location. */
+  zoneRadiusM?: number;
   onRegionChange: (region: MapRegion) => void;
   onSelect: (item: ListingSearchItem) => void;
 };
 
 /** Native map with OpenStreetMap tiles, clay price pins, and user standing navigation arrow. */
 export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMap(
-  { initialRegion, items, showsUserLocation, userLocation, onRegionChange, onSelect },
+  { initialRegion, items, showsUserLocation, userLocation, zoneRadiusM, onRegionChange, onSelect },
   ref,
 ) {
   const { colors, shadows } = useTheme();
@@ -47,11 +49,23 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
         tileSize={256}
         zIndex={-1}
       />
+      {userLocation && zoneRadiusM ? (
+        <Circle
+          center={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
+          radius={zoneRadiusM}
+          strokeWidth={1.5}
+          strokeColor={colors.accent}
+          fillColor="rgba(110, 91, 196, 0.10)"
+          zIndex={1}
+        />
+      ) : null}
       {userLocation ? (
         <Marker
           coordinate={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
           anchor={{ x: 0.5, y: 0.5 }}
           flat
+          // Rotate the marker natively so compass updates show without re-rendering the view.
+          rotation={userLocation.heading ?? 0}
           tracksViewChanges={false}
           zIndex={999}
           accessibilityLabel="Your standing location">
@@ -60,13 +74,9 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
             <View
               style={[
                 styles.userArrowDisc,
-                {
-                  backgroundColor: colors.accent,
-                  borderColor: colors.clay,
-                  transform: [{ rotate: `${userLocation.heading ?? 0}deg` }],
-                },
+                { backgroundColor: colors.accent, borderColor: colors.clay },
               ]}>
-              <Ionicons name="navigate" size={15} color={colors.onAccent} />
+              <MaterialCommunityIcons name="navigation" size={17} color={colors.onAccent} />
             </View>
           </View>
         </Marker>

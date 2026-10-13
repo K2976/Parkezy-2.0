@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Request, status
 
-from app.api.deps import CurrentUser, RateLimit, ServicesDep
+from app.api.deps import ContainerDep, CurrentUser, RateLimit, ServicesDep
 from app.api.presenters import user_out
+from app.core.security import sha256_hex
 from app.schemas.common import Message
 from app.schemas.users import (
     AuthOut,
@@ -19,6 +20,10 @@ from app.services.auth_service import TokenPair
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 auth_limit = Depends(RateLimit("auth", "rate_limit_auth_per_window"))
+# Refresh has its own, looser bucket: apps refresh silently in the background, and many users can share
+# one IP (campus Wi-Fi, carrier NAT). Sharing the strict login bucket would log real users out.
+# Refresh tokens are long random secrets, so guessing them is not what this limit protects against.
+refresh_limit = Depends(RateLimit("refresh", "rate_limit_default_per_window"))
 
 
 def _tokens(pair: TokenPair) -> TokenOut:
@@ -39,14 +44,21 @@ async def register(body: RegisterRequest, request: Request, services: ServicesDe
 
 
 @router.post("/login", response_model=AuthOut, dependencies=[auth_limit])
-async def login(body: LoginRequest, request: Request, services: ServicesDep) -> AuthOut:
+async def login(body: LoginRequest, request: Request, services: ServicesDep, c: ContainerDep) -> AuthOut:
+    # Per-account limit on top of the per-IP one, so guesses spread over many IPs still hit a wall.
+    await c.rate_limiter.hit(
+        "login_account",
+        sha256_hex(body.email.strip().lower()),
+        c.settings.rate_limit_auth_per_window,
+        c.settings.rate_limit_window_seconds,
+    )
     user, pair = await services.auth().login(
         email=body.email, password=body.password, user_agent=request.headers.get("user-agent")
     )
     return AuthOut(user=user_out(user), tokens=_tokens(pair))
 
 
-@router.post("/refresh", response_model=TokenOut, dependencies=[auth_limit])
+@router.post("/refresh", response_model=TokenOut, dependencies=[refresh_limit])
 async def refresh(body: RefreshRequest, request: Request, services: ServicesDep) -> TokenOut:
     pair = await services.auth().refresh(refresh_token=body.refresh_token, user_agent=request.headers.get("user-agent"))
     return _tokens(pair)

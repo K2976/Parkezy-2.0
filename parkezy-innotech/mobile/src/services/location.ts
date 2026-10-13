@@ -23,16 +23,42 @@ export async function currentOrDefault(): Promise<{ coords: Coords; granted: boo
   }
 }
 
+/** Rejects if `promise` takes longer than `ms` (some calls never settle, e.g. compass on a laptop). */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 /** Get user position with compass heading for standing orientation arrow. */
 export async function currentUserPosition(): Promise<UserPosition> {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return { coords: env.defaultRegion, granted: false };
-    const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    const position = await withTimeout(
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+      10_000,
+    ).catch(async () => {
+      // No high-accuracy fix in time: fall back to the last known one rather than leaving the map loading.
+      const last = await Location.getLastKnownPositionAsync();
+      if (!last) throw new Error('no position');
+      return last;
+    });
     let heading: number | undefined = position.coords.heading ?? undefined;
     if (heading === undefined || heading < 0) {
       try {
-        const compass = await Location.getHeadingAsync();
+        // Devices without a compass never answer; don't hold the map for it.
+        const compass = await withTimeout(Location.getHeadingAsync(), 1500);
         heading = compass.trueHeading >= 0 ? compass.trueHeading : compass.magHeading;
       } catch {
         heading = 0;
@@ -46,6 +72,46 @@ export async function currentUserPosition(): Promise<UserPosition> {
   } catch {
     return { coords: env.defaultRegion, granted: false };
   }
+}
+
+/**
+ * Follows the user while the map is open: position updates as they move and compass heading
+ * as they turn, so the arrow stays live. Only call after permission was granted.
+ * Returns a function that stops both watchers.
+ */
+export async function watchUserPosition(onUpdate: (update: { coords?: Coords; heading?: number }) => void): Promise<() => void> {
+  const subs: Location.LocationSubscription[] = [];
+  try {
+    subs.push(
+      await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
+        (p) => onUpdate({ coords: { latitude: p.coords.latitude, longitude: p.coords.longitude } }),
+      ),
+    );
+  } catch {
+    // Position stays at the last known fix.
+  }
+  try {
+    // No compass on web or some emulators; the arrow just keeps its last direction.
+    subs.push(
+      await Location.watchHeadingAsync((h) => {
+        const heading = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+        if (heading >= 0) onUpdate({ heading });
+      }),
+    );
+  } catch {
+    // Ignore.
+  }
+  return () => subs.forEach((s) => s.remove());
+}
+
+/** Distance in metres between two coordinates (haversine). */
+export function metresBetween(a: Coords, b: Coords): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
 }
 
 /**

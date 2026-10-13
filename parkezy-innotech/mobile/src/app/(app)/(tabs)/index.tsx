@@ -11,7 +11,7 @@ import { errorMessage } from '@/api/client';
 import { discoveryApi, type SearchParams } from '@/api/endpoints';
 import type { ListingSearchItem } from '@/api/types';
 import { keys, useConfig } from '@/hooks/queries';
-import { currentUserPosition, geocode, type UserPosition } from '@/services/location';
+import { currentUserPosition, geocode, metresBetween, type UserPosition, watchUserPosition } from '@/services/location';
 import { Backdrop, BlurTargetProvider } from '@/ui/Backdrop';
 import { Meter } from '@/ui/charts';
 import {
@@ -35,6 +35,8 @@ import { defaultWindow, type Window, WhenPicker, windowIso } from '@/ui/WhenPick
 import { dateTime, distance, duration, money, titleCase } from '@/utils/format';
 
 const KM_PER_DEGREE = 111;
+/** Radius of the "near you" zone drawn around the user; spots inside it are listed first. */
+const NEARBY_ZONE_M = 1000;
 
 function radiusFor(region: Region, maxKm: number): number {
   const km = (Math.max(region.latitudeDelta, region.longitudeDelta) * KM_PER_DEGREE) / 2;
@@ -79,13 +81,36 @@ export default function FindParking() {
   };
 
   useEffect(() => {
-    fetchUserLocation().then((pos) => {
-      setRegion({ ...pos.coords, latitudeDelta: 0.06, longitudeDelta: 0.06 });
+    let cancelled = false;
+    currentUserPosition().then((pos) => {
+      if (cancelled) return;
+      setUserPos(pos);
+      setLocationDenied(!pos.granted);
+      setRegion({ ...pos.coords, latitudeDelta: 0.03, longitudeDelta: 0.03 });
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // Keep the arrow live (position + compass) once permission is granted.
+  const granted = !!userPos?.granted;
+  useEffect(() => {
+    if (!granted) return;
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    watchUserPosition((u) => setUserPos((prev) => (prev ? { ...prev, ...u, coords: u.coords ?? prev.coords } : prev))).then((fn) => {
+      if (cancelled) fn();
+      else stop = fn;
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [granted]);
+
   const recenterToUser = () => {
-    if (userPos?.coords) {
+    if (userPos?.granted) {
       const next = { ...userPos.coords, latitudeDelta: 0.04, longitudeDelta: 0.04 };
       map.current?.animateTo(next);
       setRegion(next);
@@ -111,18 +136,27 @@ export default function FindParking() {
   const initialWhen = useMemo(() => (config.data ? defaultWindow(config.data) : null), [config.data]);
   const when = chosenWhen ?? initialWhen;
 
+  // While looking around their own location, always fetch the whole "near you" zone, even when zoomed in
+  // past it, so the zone count and nearest list don't change just because the user zoomed.
+  const zoneUser = userPos?.granted ? userPos.coords : null;
+  const zoneMinKm =
+    zoneUser && region && metresBetween(region, zoneUser) < NEARBY_ZONE_M * 2
+      ? Math.ceil((metresBetween(region, zoneUser) + NEARBY_ZONE_M) / 100) / 10
+      : 0;
+
   const params: SearchParams | null = useMemo(() => {
     if (!region || !config.data || !when) return null;
+    const maxKm = config.data.search_max_radius_km;
     return {
       latitude: Number(region.latitude.toFixed(4)),
       longitude: Number(region.longitude.toFixed(4)),
-      radius_km: Number(radiusFor(region, config.data.search_max_radius_km).toFixed(1)),
+      radius_km: Number(Math.min(Math.max(radiusFor(region, maxKm), zoneMinKm), maxKm).toFixed(1)),
       kind: filters.kind,
       amenities: filters.amenities,
       slot_type: filters.slot_type,
       ...windowIso(when),
     };
-  }, [region, config.data, when, filters]);
+  }, [region, config.data, when, filters, zoneMinKm]);
 
   const results = useQuery({
     queryKey: keys.search(params ?? {}),
@@ -165,15 +199,24 @@ export default function FindParking() {
   const isNow = !!initialWhen && when.start.getTime() <= initialWhen.start.getTime();
   const activeFilterCount = (filters.kind ? 1 : 0) + (filters.slot_type ? 1 : 0) + filters.amenities.length;
 
-  // Available spots sorted by proximity to user or map center
+  // Available spots sorted by distance from the user (or from the map centre when location is off).
+  const userCoords = userPos?.granted ? userPos.coords : null;
   const availableSpots = items
     .filter((item) => item.available_slots === undefined || item.available_slots === null || item.available_slots > 0)
+    .map((item) => ({ ...item, distance_m: userCoords ? metresBetween(userCoords, item) : item.distance_m }))
     .sort((a, b) => a.distance_m - b.distance_m);
-  const activeNearest = availableSpots[selectedNearestIndex] ?? availableSpots[0];
+  const inZoneCount = userCoords ? availableSpots.filter((x) => x.distance_m <= NEARBY_ZONE_M).length : 0;
+  // Results change as the map moves; keep the carousel index inside the (max 5) list.
+  const nearestCount = Math.min(availableSpots.length, 5);
+  const nearestIndex = Math.min(selectedNearestIndex, Math.max(0, nearestCount - 1));
+  const activeNearest = availableSpots[nearestIndex];
 
   // Search and filters float on strong glass; controls inside are clay.
   const controls = (
-    <SafeAreaView edges={['top']} style={{ paddingHorizontal: spacing.md, gap: spacing.sm }} pointerEvents="box-none">
+    <SafeAreaView
+      edges={['top']}
+      style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm }}
+      pointerEvents="box-none">
       <Glass
         tier="strong"
         rounded={radius.card}
@@ -417,6 +460,7 @@ export default function FindParking() {
           items={items}
           showsUserLocation={!locationDenied}
           userLocation={userPos?.granted ? { ...userPos.coords, heading: userPos.heading } : null}
+          zoneRadiusM={NEARBY_ZONE_M}
           onRegionChange={setRegion}
           onSelect={open}
         />
@@ -464,7 +508,9 @@ export default function FindParking() {
                 <Row gap={6}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
                   <Text style={{ fontFamily: fonts.heading, fontSize: 11, color: colors.success, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    Nearest Available Spot
+                    {inZoneCount > 0
+                      ? `${inZoneCount} ${inZoneCount === 1 ? 'spot' : 'spots'} within ${distance(NEARBY_ZONE_M)} of you`
+                      : 'Nearest Available Spot'}
                   </Text>
                 </Row>
                 <Row gap={6}>
@@ -475,7 +521,7 @@ export default function FindParking() {
                   </View>
                   {availableSpots.length > 1 ? (
                     <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.muted }}>
-                      {selectedNearestIndex + 1}/{Math.min(availableSpots.length, 5)}
+                      {nearestIndex + 1}/{nearestCount}
                     </Text>
                   ) : null}
                   <Pressable
@@ -514,15 +560,15 @@ export default function FindParking() {
                         icon="chevron-back"
                         size={34}
                         label="Previous nearest"
-                        disabled={selectedNearestIndex === 0}
-                        onPress={() => setSelectedNearestIndex((i) => Math.max(0, i - 1))}
+                        disabled={nearestIndex === 0}
+                        onPress={() => setSelectedNearestIndex(Math.max(0, nearestIndex - 1))}
                       />
                       <IconButton
                         icon="chevron-forward"
                         size={34}
                         label="Next nearest"
-                        disabled={selectedNearestIndex >= Math.min(availableSpots.length, 5) - 1}
-                        onPress={() => setSelectedNearestIndex((i) => Math.min(availableSpots.length - 1, i + 1))}
+                        disabled={nearestIndex >= nearestCount - 1}
+                        onPress={() => setSelectedNearestIndex(Math.min(nearestCount - 1, nearestIndex + 1))}
                       />
                     </Row>
                   ) : null}

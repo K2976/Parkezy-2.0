@@ -9,7 +9,7 @@ import { errorMessage } from '@/api/client';
 import { hostApi } from '@/api/endpoints';
 import type { AccessVerifyResult } from '@/api/types';
 import { keys } from '@/hooks/queries';
-import { Banner, Button, Card, Chip, IconButton, Loading, PriceRow, Row, Screen, Section, Text, TextField } from '@/ui/components';
+import { Banner, Button, Card, IconButton, Loading, PriceRow, Row, Screen, Text, TextField } from '@/ui/components';
 import { Segmented } from '@/ui/Segmented';
 import { fonts, radius, spacing, useTheme } from '@/ui/theme';
 import { money, time } from '@/utils/format';

@@ -132,3 +132,48 @@ async def test_auth_rate_limit(h: Harness):
         assert "retry-after" in {k.lower() for k in r.headers}
     finally:
         h.container.settings.rate_limit_auth_per_window = original
+
+
+async def test_login_limit_per_account_survives_ip_rotation(h: Harness):
+    settings = h.container.settings
+    original = settings.rate_limit_auth_per_window, settings.trust_forwarded_for
+    settings.rate_limit_auth_per_window, settings.trust_forwarded_for = 3, True
+    try:
+        codes = []
+        for i in range(5):
+            # A different client IP every time (as the proxy would append it): only the per-account limit can stop this.
+            r = await h.client.post(
+                "/v1/auth/login",
+                json={"email": "victim@test.parkezy.dev", "password": f"guess{i}xyz"},
+                headers={"x-forwarded-for": f"10.0.0.{i}"},
+            )
+            codes.append(r.status_code)
+        assert codes[:3] == [401, 401, 401] and 429 in codes[3:]
+    finally:
+        settings.rate_limit_auth_per_window, settings.trust_forwarded_for = original
+
+
+async def test_spoofed_forwarded_for_does_not_dodge_ip_limit(h: Harness):
+    settings = h.container.settings
+    original = settings.rate_limit_auth_per_window, settings.trust_forwarded_for
+    settings.rate_limit_auth_per_window, settings.trust_forwarded_for = 3, True
+    try:
+        codes = []
+        for i in range(5):
+            # Client forges the first hop; the trusted proxy appends the real address last.
+            r = await h.client.post(
+                "/v1/auth/login",
+                json={"email": f"user{i}@test.parkezy.dev", "password": "nope12345"},
+                headers={"x-forwarded-for": f"6.6.6.{i}, 203.0.113.7"},
+            )
+            codes.append(r.status_code)
+        assert codes[:3] == [401, 401, 401] and codes[3] == 429
+    finally:
+        settings.rate_limit_auth_per_window, settings.trust_forwarded_for = original
+
+
+async def test_security_headers(h: Harness):
+    r = await h.client.get("/health/live")
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["x-frame-options"] == "DENY"
+    assert "max-age" in r.headers["strict-transport-security"]

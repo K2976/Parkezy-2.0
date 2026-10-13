@@ -92,8 +92,9 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
                 style={{
                   alignItems: 'center',
                   justifyContent: 'center',
-                  paddingVertical: 6,
-                  paddingHorizontal: 13,
+                  // Fixed size so every tab's bubble is the same shape regardless of label length.
+                  width: 76,
+                  height: 50,
                   borderRadius: radius.pill,
                   backgroundColor: focused ? colors.clayRecessed : 'transparent',
                   boxShadow: focused ? shadows.clayPressed : undefined,
@@ -101,7 +102,6 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
                   borderColor: focused ? colors.glassBorder : 'transparent',
                   overflow: 'hidden',
                   gap: 2,
-                  minWidth: 56,
                 }}>
                 <Ionicons name={iconName} size={21} color={focused ? colors.accent : colors.muted} />
                 <RNText

@@ -32,6 +32,17 @@ export function duration(minutes: number): string {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
+/** Compact form for tight spots like the session ring: "45m", "17h 2m", "2d 3h". */
+export function shortDuration(minutes: number): string {
+  const total = Math.max(Math.round(minutes), 0);
+  const d = Math.floor(total / 1440);
+  const h = Math.floor((total % 1440) / 60);
+  const m = total % 60;
+  if (d) return h ? `${d}d ${h}h` : `${d}d`;
+  if (h) return m ? `${h}h ${m}m` : `${h}h`;
+  return `${m}m`;
+}
+
 export function distance(meters: number): string {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
 }

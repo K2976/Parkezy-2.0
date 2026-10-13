@@ -110,7 +110,9 @@ def client_ip(request: Request, c: Container) -> str:
     if c.settings.trust_forwarded_for:
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            # The proxy APPENDS the address it saw, so the last entry is the only one a client can't forge.
+            # (The first entry is whatever the client sent, which would let anyone dodge rate limits.)
+            return forwarded.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
 
 
