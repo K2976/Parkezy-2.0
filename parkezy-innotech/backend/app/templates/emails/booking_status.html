@@ -1,0 +1,6 @@
+{% extends "_base.html" %}{% block content %}
+<p>Hi {{ driver_name }},</p>
+<p><strong>{{ headline }}.</strong>{% if detail %} {{ detail }}{% endif %}</p>
+{% include "_booking_table.html" %}
+<p><a href="{{ booking_link }}" style="display:inline-block;background:#6E5BC4;color:#fff;text-decoration:none;padding:14px 22px;border-radius:20px;font-weight:700;">Find another spot</a></p>
+{% endblock %}

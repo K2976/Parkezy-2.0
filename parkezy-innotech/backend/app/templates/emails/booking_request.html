@@ -1,0 +1,7 @@
+{% extends "_base.html" %}{% block content %}
+<p>Hi {{ host_name }},</p>
+<p><strong>{{ driver_name }}</strong> would like to park at your spot.</p>
+{% include "_booking_table.html" %}
+<p>Open the app to approve or decline. Requests you don't answer expire automatically.</p>
+<p><a href="{{ booking_link }}" style="display:inline-block;background:#6E5BC4;color:#fff;text-decoration:none;padding:14px 22px;border-radius:20px;font-weight:700;">Review request</a></p>
+{% endblock %}

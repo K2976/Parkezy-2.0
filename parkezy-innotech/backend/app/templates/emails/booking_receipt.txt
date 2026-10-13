@@ -1,0 +1,10 @@
+Hi {{ driver_name }},
+
+Receipt for {{ listing_title }}, slot {{ slot_label }}, {{ starts_at }} to {{ ends_at }}
+
+Parking   {{ currency }} {{ subtotal }}
+{% if overstay_fee != "0.00" %}Overstay  {{ currency }} {{ overstay_fee }} ({{ overstay_minutes }} min)
+{% endif %}GST       {{ currency }} {{ tax_amount }}
+Total     {{ currency }} {{ total }}
+
+Booking reference {{ booking_id }}

@@ -1,0 +1,4 @@
+Hi {{ host_name }},
+
+{{ driver_name }} would like to park at {{ listing_title }} (slot {{ slot_label }}), {{ starts_at }} to {{ ends_at }}.
+Open the app to approve or decline: {{ booking_link }}

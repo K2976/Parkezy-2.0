@@ -1,0 +1,13 @@
+{% extends "_base.html" %}{% block content %}
+<p>Hi {{ driver_name }},</p>
+<p>Your parking is confirmed.</p>
+{% include "_booking_table.html" %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+<tr><td>Parking</td><td align="right">{{ currency }} {{ subtotal }}</td></tr>
+<tr><td>GST</td><td align="right">{{ currency }} {{ tax_amount }}</td></tr>
+<tr><td style="padding-top:6px;"><strong>Total</strong></td><td align="right" style="padding-top:6px;"><strong>{{ currency }} {{ total }}</strong></td></tr>
+</table>
+{% if payment_mode == "pay_at_venue" %}<p>Pay the host when you leave.</p>{% endif %}
+<p>Show the QR code or PIN from the app at the entrance.</p>
+<p><a href="{{ booking_link }}" style="display:inline-block;background:#6E5BC4;color:#fff;text-decoration:none;padding:14px 22px;border-radius:20px;font-weight:700;">Open booking</a></p>
+{% endblock %}

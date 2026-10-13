@@ -1,0 +1,4 @@
+Hi {{ name }},
+
+Your report is now {{ status | replace("_", " ") }}.
+{{ resolution }}

@@ -1,0 +1,10 @@
+Hi {{ driver_name }},
+
+Your parking at {{ listing_title }} is confirmed.
+Slot {{ slot_label }}, {{ starts_at }} to {{ ends_at }}
+{{ address }}
+
+Parking {{ currency }} {{ subtotal }} + GST {{ currency }} {{ tax_amount }} = {{ currency }} {{ total }}
+{% if payment_mode == "pay_at_venue" %}Pay the host when you leave.
+{% endif %}
+Show the QR code or PIN from the app at the entrance: {{ booking_link }}
