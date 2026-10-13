@@ -11,13 +11,14 @@ type Props = {
   initialRegion: MapRegion;
   items: ListingSearchItem[];
   showsUserLocation: boolean;
+  userLocation?: { latitude: number; longitude: number; heading?: number } | null;
   onRegionChange: (region: MapRegion) => void;
   onSelect: (item: ListingSearchItem) => void;
 };
 
 /** Web implementation of OpenStreetMap using Leaflet and official OSM tiles. */
 export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMap(
-  { initialRegion, items, onRegionChange, onSelect },
+  { initialRegion, items, userLocation, onRegionChange, onSelect },
   ref,
 ) {
   const { colors } = useTheme();
@@ -40,6 +41,22 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
       );
     },
   }));
+
+  // Sync user location to iframe
+  useEffect(() => {
+    if (userLocation) {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          source: 'parkezy-host',
+          type: 'SET_USER_LOCATION',
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
+          heading: userLocation.heading ?? 0,
+        },
+        '*',
+      );
+    }
+  }, [userLocation]);
 
   // Handle messages from the iframe (marker clicks, map pans)
   useEffect(() => {
@@ -117,6 +134,40 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
       color: #666173;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
+    .user-arrow-beacon {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .user-arrow-pulse {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(110, 91, 196, 0.22);
+      border: 2px solid #6E5BC4;
+    }
+    .user-arrow-disc {
+      position: relative;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #6E5BC4;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+    .user-arrow-disc svg {
+      width: 14px;
+      height: 14px;
+      fill: #ffffff;
+    }
   </style>
 </head>
 <body>
@@ -131,6 +182,21 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
     }).addTo(map);
 
     var markersLayer = L.layerGroup().addTo(map);
+    var userMarker = null;
+
+    function renderUser(lat, lng, heading) {
+      if (userMarker) {
+        map.removeLayer(userMarker);
+        userMarker = null;
+      }
+      var icon = L.divIcon({
+        className: '',
+        html: '<div class="user-arrow-beacon"><div class="user-arrow-pulse"></div><div class="user-arrow-disc" style="transform: rotate(' + (heading || 0) + 'deg);"><svg viewBox="0 0 512 512"><path d="M480 32L32 240h240v240L480 32z"/></svg></div></div>',
+        iconSize: [44, 44],
+        iconAnchor: [22, 22]
+      });
+      userMarker = L.marker([lat, lng], { icon: icon, zIndexOffset: 1000 }).addTo(map);
+    }
 
     function renderMarkers(items) {
       markersLayer.clearLayers();
@@ -173,6 +239,8 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
         renderMarkers(e.data.items);
       } else if (e.data.type === 'SET_CENTER') {
         map.setView([e.data.lat, e.data.lng], map.getZoom(), { animate: true });
+      } else if (e.data.type === 'SET_USER_LOCATION') {
+        renderUser(e.data.lat, e.data.lng, e.data.heading);
       }
     });
 

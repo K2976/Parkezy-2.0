@@ -1,5 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, View } from 'react-native';
@@ -192,6 +194,41 @@ export default function BookingDetail() {
 
   return (
     <Screen refreshing={booking.isRefetching} onRefresh={() => booking.refetch()}>
+      {/* Spot Photo Preview */}
+      <View
+        style={{
+          height: 170,
+          borderRadius: radius.card,
+          overflow: 'hidden',
+          marginBottom: spacing.md,
+          backgroundColor: colors.clayRecessed,
+        }}>
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80' }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+          accessibilityLabel="Photo of the parking spot"
+        />
+        <View
+          style={{
+            position: 'absolute',
+            bottom: spacing.sm,
+            left: spacing.sm,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            paddingHorizontal: spacing.sm,
+            paddingVertical: 4,
+            borderRadius: radius.pill,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+          <Ionicons name="car-outline" size={14} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 12, fontFamily: fonts.bodyBold }}>
+            Slot {b.slot.label} · {b.listing.title}
+          </Text>
+        </View>
+      </View>
+
       <View style={{ gap: spacing.sm }}>
         <StatusBadge status={b.status} />
         <Text variant="title">{b.listing.title}</Text>

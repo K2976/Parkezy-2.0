@@ -91,33 +91,29 @@ const dark: Palette = {
   qrForeground: '#1B1822',
 };
 
-/** Multi-layer shadow stacks (RN `boxShadow` syntax, supports inset). */
+/** Multi-layer shadow stacks: refined, subtle elevation that gently pops buttons without excessive halos. */
 function shadowsFor(scheme: 'light' | 'dark') {
   if (scheme === 'dark') {
     return {
-      clayRaised:
-        '8px 8px 18px rgba(0,0,0,0.45), -6px -6px 14px rgba(255,255,255,0.03), inset 2px 2px 4px rgba(255,255,255,0.05), inset -2px -2px 4px rgba(0,0,0,0.30)',
-      clayAccent:
-        '8px 8px 18px rgba(0,0,0,0.45), -6px -6px 14px rgba(255,255,255,0.03), inset 3px 3px 6px rgba(255,255,255,0.22), inset -3px -3px 6px rgba(0,0,0,0.18)',
-      clayPressed: 'inset 6px 6px 12px rgba(0,0,0,0.55), inset -6px -6px 12px rgba(255,255,255,0.04)',
-      clayKnob: '3px 3px 6px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.08)',
-      glass: '0px 10px 20px rgba(0,0,0,0.30)',
-      featured: '12px 12px 28px rgba(0,0,0,0.5)',
+      clayRaised: '0 2px 4px rgba(0,0,0,0.30)',
+      clayAccent: '0 2px 6px rgba(164,149,230,0.30)',
+      clayPressed: undefined,
+      clayKnob: '0 1px 3px rgba(0,0,0,0.40)',
+      glass: '0 2px 6px rgba(0,0,0,0.20)',
+      featured: '0 3px 8px rgba(0,0,0,0.30)',
     };
   }
   return {
-    // convex control: soft purple-grey drop shadow + top-left highlight + inner rim + bottom-right shade
-    clayRaised:
-      '10px 10px 20px rgba(160,150,180,0.28), -8px -8px 16px rgba(255,255,255,0.90), inset 3px 3px 6px rgba(255,255,255,0.85), inset -3px -3px 6px rgba(160,150,180,0.14)',
-    // convex accent control: the drop shadow takes the accent hue
-    clayAccent:
-      '10px 10px 20px rgba(110,91,196,0.30), -8px -8px 16px rgba(255,255,255,0.70), inset 3px 3px 6px rgba(255,255,255,0.32), inset -3px -3px 6px rgba(0,0,0,0.12)',
-    // concave: inputs, pressed state, toggle tracks
-    clayPressed: 'inset 8px 8px 16px #D9D4E3, inset -8px -8px 16px #FFFFFF',
-    clayKnob: '3px 3px 6px rgba(160,150,180,0.40), -2px -2px 4px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(160,150,180,0.2)',
-    // glass: soft shadow (10% opacity) — the top-edge highlight is drawn separately
-    glass: '0px 10px 20px rgba(51,47,58,0.10)',
-    featured: '14px 14px 30px rgba(46,42,53,0.28), -8px -8px 18px rgba(255,255,255,0.8)',
+    // Crisp, subtle drop shadow that gently pops buttons without huge blurred halos:
+    clayRaised: '0 2px 4px rgba(20,15,35,0.08)',
+    // Subtle accent lift just to pop accent buttons cleanly:
+    clayAccent: '0 2px 6px rgba(110,91,196,0.22)',
+    // Clean pressed surface (background tint handles the pressed state):
+    clayPressed: undefined,
+    clayKnob: '0 1px 3px rgba(20,15,35,0.12)',
+    // Glass surface: clean, subtle float without foggy halos:
+    glass: '0 2px 6px rgba(20,15,35,0.05)',
+    featured: '0 3px 8px rgba(20,15,35,0.10)',
   };
 }
 

@@ -257,17 +257,24 @@ export function IconButton({
   label,
   tone = 'neutral',
   size = controlHeight.sm,
+  disabled,
 }: {
   icon: IconName;
   onPress: () => void;
   label: string;
   tone?: Tone;
   size?: number;
+  disabled?: boolean;
 }) {
   const { colors: c, shadows } = useTheme();
   const t = useTone(tone);
   return (
-    <Squishable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={6}>
+    <Squishable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={disabled}
+      onPress={disabled ? () => {} : onPress}
+      hitSlop={6}>
       {(pressed) => (
         <View
           style={{
@@ -277,7 +284,8 @@ export function IconButton({
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: c.clay,
-            boxShadow: pressed ? shadows.clayPressed : shadows.clayRaised,
+            boxShadow: disabled ? undefined : pressed ? shadows.clayPressed : shadows.clayRaised,
+            opacity: disabled ? 0.35 : 1,
           }}>
           <Ionicons name={icon} size={size * 0.45} color={tone === 'neutral' ? c.text : t.fg} />
         </View>
