@@ -95,25 +95,41 @@ const dark: Palette = {
 function shadowsFor(scheme: 'light' | 'dark') {
   if (scheme === 'dark') {
     return {
-      clayRaised: '0 2px 4px rgba(0,0,0,0.30)',
-      clayAccent: '0 2px 6px rgba(164,149,230,0.30)',
-      clayPressed: undefined,
-      clayKnob: '0 1px 3px rgba(0,0,0,0.40)',
-      glass: '0 2px 6px rgba(0,0,0,0.20)',
-      featured: '0 3px 8px rgba(0,0,0,0.30)',
+      // 3D tactile dark claymorphism: convex clay with dark ambient drop, specular rim, and inner bevel
+      clayRaised:
+        '6px 6px 14px rgba(0,0,0,0.50), -4px -4px 10px rgba(255,255,255,0.04), inset 2px 2px 4px rgba(255,255,255,0.06), inset -2px -2px 4px rgba(0,0,0,0.35)',
+      // 3D tactile dark accent clay
+      clayAccent:
+        '6px 8px 16px rgba(164,149,230,0.35), -4px -4px 10px rgba(255,255,255,0.05), inset 2px 2px 4px rgba(255,255,255,0.25), inset -2px -2px 4px rgba(0,0,0,0.25)',
+      // Concave pressed clay well (inputs, pressed buttons, active wells)
+      clayPressed:
+        'inset 4px 4px 8px rgba(0,0,0,0.60), inset -4px -4px 8px rgba(255,255,255,0.05)',
+      clayKnob:
+        '2px 3px 6px rgba(0,0,0,0.50), inset 1px 1px 2px rgba(255,255,255,0.10)',
+      // Frosted glass mirror surface
+      glass:
+        '0px 10px 24px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.15)',
+      featured:
+        '10px 10px 24px rgba(0,0,0,0.55)',
     };
   }
   return {
-    // Crisp, subtle drop shadow that gently pops buttons without huge blurred halos:
-    clayRaised: '0 2px 4px rgba(20,15,35,0.08)',
-    // Subtle accent lift just to pop accent buttons cleanly:
-    clayAccent: '0 2px 6px rgba(110,91,196,0.22)',
-    // Clean pressed surface (background tint handles the pressed state):
-    clayPressed: undefined,
-    clayKnob: '0 1px 3px rgba(20,15,35,0.12)',
-    // Glass surface: clean, subtle float without foggy halos:
-    glass: '0 2px 6px rgba(20,15,35,0.05)',
-    featured: '0 3px 8px rgba(20,15,35,0.10)',
+    // 3D tactile matte claymorphism: convex clay surface with soft drop shade, specular highlight, and inner beveled rims
+    clayRaised:
+      '6px 7px 15px rgba(160,150,180,0.28), -5px -5px 12px rgba(255,255,255,0.95), inset 2px 2px 4px rgba(255,255,255,0.85), inset -2px -2px 4px rgba(160,150,180,0.14)',
+    // 3D tactile accent clay: violet ambient drop shadow + upper-left light reflection + inner beveled highlight
+    clayAccent:
+      '6px 8px 18px rgba(110,91,196,0.34), -5px -5px 12px rgba(255,255,255,0.75), inset 2px 2px 5px rgba(255,255,255,0.40), inset -2px -2px 5px rgba(0,0,0,0.14)',
+    // Concave pressed clay well: pressed into the surface with inner shadow and highlight rim
+    clayPressed:
+      'inset 4px 4px 9px rgba(160,150,180,0.32), inset -4px -4px 9px rgba(255,255,255,0.95)',
+    clayKnob:
+      '3px 3px 6px rgba(160,150,180,0.38), -2px -2px 5px rgba(255,255,255,0.95), inset 1px 1px 2px rgba(255,255,255,0.85)',
+    // Frosted glass mirror surface: luxury float with soft ambient depth and mirror sheen
+    glass:
+      '0px 10px 24px rgba(51,47,58,0.10), 0 2px 6px rgba(51,47,58,0.04)',
+    featured:
+      '10px 10px 24px rgba(46,42,53,0.25), -6px -6px 14px rgba(255,255,255,0.75)',
   };
 }
 

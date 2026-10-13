@@ -569,7 +569,7 @@ export function ListItem({
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: 120 },
   cardContent: { padding: spacing.xl, gap: spacing.sm },
-  button: { borderRadius: radius.control, paddingHorizontal: spacing.xl, alignItems: 'center', justifyContent: 'center' },
+  button: { borderRadius: radius.control, paddingHorizontal: spacing.xl, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   input: {
     minHeight: controlHeight.md,
     borderRadius: radius.control,
@@ -578,12 +578,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     fontFamily: fonts.body,
+    overflow: 'hidden',
   },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 16, minHeight: 40, margin: 3 },
-  track: { width: 56, height: 34, borderRadius: 17, padding: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 16, minHeight: 40, margin: 3, overflow: 'hidden' },
+  track: { width: 56, height: 34, borderRadius: 17, padding: 4, overflow: 'hidden' },
   thumb: { width: 26, height: 26, borderRadius: 13 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   banner: { padding: spacing.md },
-  pill: { borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start' },
+  pill: { borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', overflow: 'hidden' },
   listItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, paddingRight: spacing.lg },
 });

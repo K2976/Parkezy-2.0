@@ -30,7 +30,7 @@ export const TAB_ACTIVE_ICONS: Record<string, IconName> = {
  * Uses overflow: 'hidden' and smooth pill geometry to prevent square clipping on Android Expo Go.
  */
 export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { colors, scheme } = useTheme();
+  const { colors, shadows, scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 10);
 
@@ -54,8 +54,8 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
           maxWidth: 480,
           borderRadius: 32,
           overflow: 'hidden',
-          borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(215,210,230,0.60)',
-          borderWidth: 1,
+          borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(215,210,230,0.65)',
+          borderWidth: 1.2,
         }}
         contentStyle={{
           flexDirection: 'row',
@@ -93,11 +93,12 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingVertical: 6,
-                  paddingHorizontal: 12,
+                  paddingHorizontal: 13,
                   borderRadius: radius.pill,
-                  backgroundColor: focused ? colors.accentSoft : 'transparent',
+                  backgroundColor: focused ? colors.clayRecessed : 'transparent',
+                  boxShadow: focused ? shadows.clayPressed : undefined,
                   borderWidth: focused ? 1 : 0,
-                  borderColor: focused ? 'rgba(110, 91, 196, 0.16)' : 'transparent',
+                  borderColor: focused ? colors.glassBorder : 'transparent',
                   overflow: 'hidden',
                   gap: 2,
                   minWidth: 56,

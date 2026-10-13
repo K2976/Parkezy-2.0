@@ -180,7 +180,7 @@ export default function FindParking() {
         style={{ borderWidth: 1, borderColor: colors.glassBorder }}
         contentStyle={{ padding: spacing.sm + 2, gap: spacing.sm }}>
         <Row gap={spacing.xs}>
-          <View style={[styles.search, { backgroundColor: colors.clayRecessed, borderWidth: 1, borderColor: colors.hairline }]}>
+          <View style={[styles.search, { backgroundColor: colors.clayRecessed, boxShadow: shadows.clayPressed, overflow: 'hidden' }]}>
             <Ionicons name="search" size={17} color={colors.muted} />
             <TextInput
               value={query}

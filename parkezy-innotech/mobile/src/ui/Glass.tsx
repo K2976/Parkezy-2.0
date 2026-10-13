@@ -28,7 +28,7 @@ export function Glass({
   const target = useBlurTarget();
   const spec = glassTiers[tier];
   return (
-    <View style={[{ borderRadius: rounded, boxShadow: shadows.glass }, style]}>
+    <View style={[{ borderRadius: rounded, boxShadow: shadows.glass, overflow: 'hidden' }, style]}>
       <View style={[StyleSheet.absoluteFill, { borderRadius: rounded, overflow: 'hidden' }]} pointerEvents="none">
         <BlurView
           intensity={spec.blur}
@@ -38,12 +38,28 @@ export function Glass({
           style={StyleSheet.absoluteFill}
         />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors[spec.fill] }]} />
-        {/* top-edge highlight: light catching the rim of the pane */}
-        <View style={{ position: 'absolute', top: 0, left: rounded / 2, right: rounded / 2, height: 1, backgroundColor: colors.glassHighlight }} />
+        {/* Glass mirror top specular beam catching light across the beveled pane */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: rounded / 4,
+            right: rounded / 4,
+            height: 1.5,
+            backgroundColor: colors.glassHighlight,
+            opacity: 0.95,
+          }}
+        />
       </View>
       <View
         style={[
-          { borderRadius: rounded, borderWidth: StyleSheet.hairlineWidth * 2, borderColor: colors.glassBorder },
+          {
+            borderRadius: rounded,
+            borderWidth: 1.2,
+            borderColor: colors.glassBorder,
+            borderTopColor: colors.glassHighlight,
+            overflow: 'hidden',
+          },
           contentStyle,
         ]}>
         {children}
