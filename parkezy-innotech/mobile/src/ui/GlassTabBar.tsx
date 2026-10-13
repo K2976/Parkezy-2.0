@@ -18,12 +18,19 @@ export const TAB_ICONS: Record<string, IconName> = {
   account: 'person-circle-outline',
 };
 
+export const TAB_ACTIVE_ICONS: Record<string, IconName> = {
+  index: 'map',
+  bookings: 'calendar',
+  host: 'home',
+  account: 'person-circle',
+};
+
 /**
- * Floating strong-glass dock. The active tab is a clay well pressed into the glass;
- * inactive tabs are flat so the active one reads instantly.
+ * Floating strong-glass dock with rounded capsule bubbles for the active tab.
+ * Uses overflow: 'hidden' and smooth pill geometry to prevent square clipping on Android Expo Go.
  */
 export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { colors, shadows } = useTheme();
+  const { colors, shadows, scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 10);
 
@@ -35,23 +42,29 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
         left: 0,
         right: 0,
         bottom: 0,
+        alignItems: 'center',
+        paddingHorizontal: spacing.md,
+        paddingBottom: bottomPadding,
       }}>
       <Glass
         tier="strong"
-        rounded={radius.card}
+        rounded={32}
         style={{
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
-          borderLeftWidth: 0,
-          borderRightWidth: 0,
-          borderBottomWidth: 0,
+          width: '100%',
+          maxWidth: 480,
+          borderRadius: 32,
+          overflow: 'hidden',
+          borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(215,210,230,0.65)',
+          borderWidth: 1.2,
         }}
         contentStyle={{
           flexDirection: 'row',
-          paddingTop: 8,
-          paddingBottom: bottomPadding,
-          paddingHorizontal: spacing.sm,
+          paddingVertical: 6,
+          paddingHorizontal: spacing.xs,
           alignItems: 'center',
+          justifyContent: 'space-around',
+          borderRadius: 32,
+          overflow: 'hidden',
         }}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -62,6 +75,10 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
           };
+          const iconName = focused
+            ? (TAB_ACTIVE_ICONS[route.name] ?? TAB_ICONS[route.name] ?? 'ellipse')
+            : (TAB_ICONS[route.name] ?? 'ellipse-outline');
+
           return (
             <Squishable
               key={route.key}
@@ -69,38 +86,49 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
               accessibilityState={{ selected: focused }}
               accessibilityLabel={badge ? `${label}, ${badge} new` : label}
               onPress={onPress}
+              scaleTo={0.94}
               style={{ flex: 1, alignItems: 'center' }}>
               <View
                 style={{
                   alignItems: 'center',
                   justifyContent: 'center',
-                  paddingVertical: 5,
-                  paddingHorizontal: 14,
+                  // Fixed size so every tab's bubble is the same shape regardless of label length.
+                  width: 76,
+                  height: 50,
                   borderRadius: radius.pill,
                   backgroundColor: focused ? colors.clayRecessed : 'transparent',
                   boxShadow: focused ? shadows.clayPressed : undefined,
+                  borderWidth: focused ? 1 : 0,
+                  borderColor: focused ? colors.glassBorder : 'transparent',
+                  overflow: 'hidden',
                   gap: 2,
-                  minWidth: 60,
                 }}>
-                <Ionicons name={TAB_ICONS[route.name] ?? 'ellipse-outline'} size={22} color={focused ? colors.accent : colors.muted} />
-                <RNText style={{ fontFamily: focused ? fonts.heading : fonts.bodyMedium, fontSize: 11, color: focused ? colors.accent : colors.muted }}>
+                <Ionicons name={iconName} size={21} color={focused ? colors.accent : colors.muted} />
+                <RNText
+                  numberOfLines={1}
+                  style={{
+                    fontFamily: focused ? fonts.heading : fonts.bodyMedium,
+                    fontSize: 11,
+                    color: focused ? colors.accent : colors.muted,
+                    letterSpacing: 0.2,
+                  }}>
                   {label}
                 </RNText>
                 {badge ? (
                   <View
                     style={{
                       position: 'absolute',
-                      top: 1,
+                      top: 2,
                       right: 4,
-                      minWidth: 18,
-                      height: 18,
-                      borderRadius: 9,
-                      paddingHorizontal: 4,
+                      minWidth: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      paddingHorizontal: 3,
                       backgroundColor: colors.danger,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                    <RNText style={{ color: colors.onAccent, fontFamily: fonts.bodyBold, fontSize: 10 }}>{badge}</RNText>
+                    <RNText style={{ color: colors.onAccent, fontFamily: fonts.bodyBold, fontSize: 9 }}>{badge}</RNText>
                   </View>
                 ) : null}
               </View>

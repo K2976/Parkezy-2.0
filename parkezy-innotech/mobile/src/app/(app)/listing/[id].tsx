@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 import { Image } from 'expo-image';
@@ -46,6 +47,7 @@ export default function ListingDetail() {
   );
   const [slotId, setSlotId] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState('');
+  const [photoIndex, setPhotoIndex] = useState(0);
   // One key per booking attempt: retries after a network error never double-book.
   const idempotencyKey = useRef(Crypto.randomUUID());
 
@@ -87,26 +89,88 @@ export default function ListingDetail() {
     <>
       <Stack.Screen options={{ title: l.title }} />
       <Screen>
-        {l.media.length ? (
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            style={{ marginHorizontal: -spacing.lg }}
-            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.lg }}
-            snapToInterval={width - spacing.lg}
-            decelerationRate="fast">
-            {l.media.map((m) => (
-              <Image
-                key={m.id}
-                source={{ uri: m.url }}
-                style={{ width: width - spacing.lg * 2, height: 230, borderRadius: radius.card }}
-                contentFit="cover"
-                accessibilityLabel="Photo of the parking spot"
-              />
-            ))}
-          </ScrollView>
-        ) : null}
+        {(() => {
+          const displayPhotos = l.media.length
+            ? l.media.map((m) => ({ id: m.id, url: m.url }))
+            : [
+                { id: 'fb1', url: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80' },
+                { id: 'fb2', url: 'https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1200&q=80' },
+                { id: 'fb3', url: 'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&w=1200&q=80' },
+              ];
+          const cardWidth = width - spacing.lg * 2;
+          return (
+            <View style={{ marginHorizontal: -spacing.lg, marginBottom: spacing.md }}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.lg }}
+                snapToInterval={cardWidth + spacing.lg}
+                decelerationRate="fast"
+                onMomentumScrollEnd={(e) => {
+                  const offset = e.nativeEvent.contentOffset.x;
+                  const idx = Math.round(offset / (cardWidth + spacing.lg));
+                  setPhotoIndex(Math.max(0, Math.min(idx, displayPhotos.length - 1)));
+                }}>
+                {displayPhotos.map((p, i) => (
+                  <View
+                    key={p.id}
+                    style={{
+                      width: cardWidth,
+                      height: 230,
+                      borderRadius: radius.card,
+                      overflow: 'hidden',
+                      backgroundColor: colors.clayRecessed,
+                    }}>
+                    <Image
+                      source={{ uri: p.url }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      accessibilityLabel={`Photo ${i + 1} of ${displayPhotos.length}`}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Floating Photo Counter Badge */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: spacing.sm,
+                  right: spacing.xl,
+                  backgroundColor: 'rgba(0,0,0,0.65)',
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: 4,
+                  borderRadius: radius.pill,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}>
+                <Ionicons name="camera" size={13} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12, fontFamily: fonts.bodyBold }}>
+                  {photoIndex + 1} / {displayPhotos.length}
+                </Text>
+              </View>
+
+              {/* Dots Pagination */}
+              {displayPhotos.length > 1 ? (
+                <Row gap={6} style={{ justifyContent: 'center', marginTop: spacing.sm }}>
+                  {displayPhotos.map((_, i) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: i === photoIndex ? 18 : 6,
+                        height: 6,
+                        borderRadius: radius.pill,
+                        backgroundColor: i === photoIndex ? colors.accent : colors.hairline,
+                      }}
+                    />
+                  ))}
+                </Row>
+              ) : null}
+            </View>
+          );
+        })()}
         <View style={{ gap: 6, marginTop: spacing.xl }}>
           <Text variant="title">{l.title}</Text>
           <Text variant="muted">

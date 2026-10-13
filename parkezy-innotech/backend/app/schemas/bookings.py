@@ -73,8 +73,8 @@ class AccessVerifyRequest(Schema):
 
     @model_validator(mode="after")
     def _one(self):
-        if not self.qr_token and not (self.listing_id and self.pin):
-            raise ValueError("Provide qr_token, or listing_id and pin")
+        if not self.qr_token and not self.pin:
+            raise ValueError("Provide either qr_token or pin")
         return self
 
 

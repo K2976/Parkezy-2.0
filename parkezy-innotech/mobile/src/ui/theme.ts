@@ -91,33 +91,45 @@ const dark: Palette = {
   qrForeground: '#1B1822',
 };
 
-/** Multi-layer shadow stacks (RN `boxShadow` syntax, supports inset). */
+/** Multi-layer shadow stacks: refined, subtle elevation that gently pops buttons without excessive halos. */
 function shadowsFor(scheme: 'light' | 'dark') {
   if (scheme === 'dark') {
     return {
+      // 3D tactile dark claymorphism: convex clay with dark ambient drop, specular rim, and inner bevel
       clayRaised:
-        '8px 8px 18px rgba(0,0,0,0.45), -6px -6px 14px rgba(255,255,255,0.03), inset 2px 2px 4px rgba(255,255,255,0.05), inset -2px -2px 4px rgba(0,0,0,0.30)',
+        '3px 3px 7px rgba(0,0,0,0.45), -2px -2px 5px rgba(255,255,255,0.04), inset 2px 2px 4px rgba(255,255,255,0.06), inset -2px -2px 4px rgba(0,0,0,0.35)',
+      // 3D tactile dark accent clay
       clayAccent:
-        '8px 8px 18px rgba(0,0,0,0.45), -6px -6px 14px rgba(255,255,255,0.03), inset 3px 3px 6px rgba(255,255,255,0.22), inset -3px -3px 6px rgba(0,0,0,0.18)',
-      clayPressed: 'inset 6px 6px 12px rgba(0,0,0,0.55), inset -6px -6px 12px rgba(255,255,255,0.04)',
-      clayKnob: '3px 3px 6px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.08)',
-      glass: '0px 10px 20px rgba(0,0,0,0.30)',
-      featured: '12px 12px 28px rgba(0,0,0,0.5)',
+        '3px 4px 8px rgba(164,149,230,0.30), -2px -2px 5px rgba(255,255,255,0.05), inset 2px 2px 4px rgba(255,255,255,0.25), inset -2px -2px 4px rgba(0,0,0,0.25)',
+      // Concave pressed clay well (inputs, pressed buttons, active wells)
+      clayPressed:
+        'inset 3px 3px 6px rgba(0,0,0,0.55), inset -3px -3px 6px rgba(255,255,255,0.05)',
+      clayKnob:
+        '1px 2px 4px rgba(0,0,0,0.45), inset 1px 1px 2px rgba(255,255,255,0.10)',
+      // Frosted glass mirror surface
+      glass:
+        '0px 6px 14px rgba(0,0,0,0.30), 0 1px 4px rgba(0,0,0,0.15)',
+      featured:
+        '5px 5px 12px rgba(0,0,0,0.45)',
     };
   }
   return {
-    // convex control: soft purple-grey drop shadow + top-left highlight + inner rim + bottom-right shade
+    // 3D tactile matte claymorphism: convex clay surface with soft drop shade, specular highlight, and inner beveled rims
     clayRaised:
-      '10px 10px 20px rgba(160,150,180,0.28), -8px -8px 16px rgba(255,255,255,0.90), inset 3px 3px 6px rgba(255,255,255,0.85), inset -3px -3px 6px rgba(160,150,180,0.14)',
-    // convex accent control: the drop shadow takes the accent hue
+      '3px 4px 8px rgba(160,150,180,0.26), -3px -3px 6px rgba(255,255,255,0.95), inset 2px 2px 4px rgba(255,255,255,0.85), inset -2px -2px 4px rgba(160,150,180,0.14)',
+    // 3D tactile accent clay: violet ambient drop shadow + upper-left light reflection + inner beveled highlight
     clayAccent:
-      '10px 10px 20px rgba(110,91,196,0.30), -8px -8px 16px rgba(255,255,255,0.70), inset 3px 3px 6px rgba(255,255,255,0.32), inset -3px -3px 6px rgba(0,0,0,0.12)',
-    // concave: inputs, pressed state, toggle tracks
-    clayPressed: 'inset 8px 8px 16px #D9D4E3, inset -8px -8px 16px #FFFFFF',
-    clayKnob: '3px 3px 6px rgba(160,150,180,0.40), -2px -2px 4px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(160,150,180,0.2)',
-    // glass: soft shadow (10% opacity) — the top-edge highlight is drawn separately
-    glass: '0px 10px 20px rgba(51,47,58,0.10)',
-    featured: '14px 14px 30px rgba(46,42,53,0.28), -8px -8px 18px rgba(255,255,255,0.8)',
+      '3px 4px 9px rgba(110,91,196,0.30), -3px -3px 6px rgba(255,255,255,0.75), inset 2px 2px 5px rgba(255,255,255,0.40), inset -2px -2px 5px rgba(0,0,0,0.14)',
+    // Concave pressed clay well: pressed into the surface with inner shadow and highlight rim
+    clayPressed:
+      'inset 3px 3px 6px rgba(160,150,180,0.30), inset -3px -3px 6px rgba(255,255,255,0.95)',
+    clayKnob:
+      '2px 2px 4px rgba(160,150,180,0.34), -1px -1px 3px rgba(255,255,255,0.95), inset 1px 1px 2px rgba(255,255,255,0.85)',
+    // Frosted glass mirror surface: luxury float with soft ambient depth and mirror sheen
+    glass:
+      '0px 6px 14px rgba(51,47,58,0.09), 0 1px 4px rgba(51,47,58,0.04)',
+    featured:
+      '5px 5px 12px rgba(46,42,53,0.20), -3px -3px 8px rgba(255,255,255,0.75)',
   };
 }
 

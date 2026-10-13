@@ -17,7 +17,7 @@ export function Segmented<T extends string>({
   return (
     <View
       accessibilityRole="tablist"
-      style={{ flexDirection: 'row', padding: 5, gap: 4, borderRadius: radius.control + 4, backgroundColor: colors.clayRecessed, boxShadow: shadows.clayPressed }}>
+      style={{ flexDirection: 'row', padding: 5, gap: 4, borderRadius: radius.control + 4, backgroundColor: colors.clayRecessed, boxShadow: shadows.clayPressed, overflow: 'hidden' }}>
       {options.map((o) => {
         const selected = o.key === value;
         return (
@@ -37,6 +37,7 @@ export function Segmented<T extends string>({
                 paddingHorizontal: spacing.sm,
                 backgroundColor: selected ? colors.clay : 'transparent',
                 boxShadow: selected ? shadows.clayRaised : undefined,
+                overflow: 'hidden',
               }}>
               <RNText style={{ fontFamily: selected ? fonts.heading : fonts.bodyMedium, fontSize: 14, color: selected ? colors.accent : colors.muted }}>
                 {o.label}

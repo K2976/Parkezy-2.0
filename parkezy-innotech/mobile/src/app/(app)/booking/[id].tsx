@@ -1,5 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, View } from 'react-native';
@@ -27,7 +29,7 @@ import {
   Text,
 } from '@/ui/components';
 import { fonts, radius, spacing, useTheme } from '@/ui/theme';
-import { dateTime, duration, money, time, titleCase } from '@/utils/format';
+import { dateTime, duration, money, shortDuration, time, titleCase } from '@/utils/format';
 import { minutesBetween } from '@/utils/time';
 
 const LIVE: Booking['status'][] = ['pending_approval', 'pending_payment', 'confirmed', 'checked_in'];
@@ -96,6 +98,7 @@ function PinDigit({ digit }: { digit: string }) {
 }
 
 function SessionRing({ booking, now }: { booking: Booking; now: Date }) {
+  const { colors } = useTheme();
   const start = new Date(booking.checked_in_at ?? booking.starts_at);
   const end = new Date(booking.ends_at);
   const total = Math.max(minutesBetween(start, end), 1);
@@ -110,17 +113,32 @@ function SessionRing({ booking, now }: { booking: Booking; now: Date }) {
           tone={over || left <= 15 ? 'warning' : 'accent'}
           accessibilityLabel={over ? `Overstayed by ${duration(-left)}` : `${duration(left)} left`}
           center={
-            <View style={{ alignItems: 'center' }}>
-              <Text variant="number">{over ? `+${duration(-left)}` : duration(Math.max(left, 0))}</Text>
-              <Text variant="small">{over ? 'over' : 'left'}</Text>
+            // Compact value so long overstays ("+17h 2m", "+2d 3h") stay inside the ring.
+            <View style={{ alignItems: 'center', paddingHorizontal: 14 }}>
+              <Text
+                variant="number"
+                numberOfLines={1}
+                style={{ fontSize: 22, lineHeight: 26, color: over ? colors.warning : colors.text }}>
+                {over ? `+${shortDuration(-left)}` : shortDuration(left)}
+              </Text>
+              <Text variant="small">{over ? 'overtime' : 'left'}</Text>
             </View>
           }
         />
         <View style={{ flex: 1, gap: 4 }}>
           <Text variant="heading">{over ? 'Time’s up' : 'You’re parked'}</Text>
-          <Text variant="muted">
-            Until {time(booking.ends_at, booking.listing.timezone)}. {over ? 'Overstay fees are adding up.' : 'End parking from here when you leave.'}
-          </Text>
+          {over ? (
+            <>
+              <Text variant="muted">Your booking ended at {time(booking.ends_at, booking.listing.timezone)}.</Text>
+              <Text variant="small" style={{ color: colors.warning }}>
+                Overstay fees are adding up. End parking as soon as you leave.
+              </Text>
+            </>
+          ) : (
+            <Text variant="muted">
+              Until {time(booking.ends_at, booking.listing.timezone)}. End parking from here when you leave.
+            </Text>
+          )}
         </View>
       </Row>
     </Card>
@@ -192,6 +210,41 @@ export default function BookingDetail() {
 
   return (
     <Screen refreshing={booking.isRefetching} onRefresh={() => booking.refetch()}>
+      {/* Spot Photo Preview */}
+      <View
+        style={{
+          height: 170,
+          borderRadius: radius.card,
+          overflow: 'hidden',
+          marginBottom: spacing.md,
+          backgroundColor: colors.clayRecessed,
+        }}>
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80' }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+          accessibilityLabel="Photo of the parking spot"
+        />
+        <View
+          style={{
+            position: 'absolute',
+            bottom: spacing.sm,
+            left: spacing.sm,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            paddingHorizontal: spacing.sm,
+            paddingVertical: 4,
+            borderRadius: radius.pill,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+          <Ionicons name="car-outline" size={14} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 12, fontFamily: fonts.bodyBold }}>
+            Slot {b.slot.label} · {b.listing.title}
+          </Text>
+        </View>
+      </View>
+
       <View style={{ gap: spacing.sm }}>
         <StatusBadge status={b.status} />
         <Text variant="title">{b.listing.title}</Text>

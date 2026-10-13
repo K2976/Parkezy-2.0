@@ -477,25 +477,23 @@ class BookingService:
             raise Forbidden("This code was already used; ask the driver to refresh it", code="qr_replayed")
         return await self._get(uuid.UUID(payload["sub"]), lock=True)
 
-    async def _booking_from_pin(self, host: User, listing_id: uuid.UUID, pin: str, rules: PlatformRules) -> Booking:
+    async def _booking_from_pin(self, host: User, listing_id: uuid.UUID | None, pin: str, rules: PlatformRules) -> Booking:
         now = self._clock.now()
         early = timedelta(minutes=rules.early_checkin_minutes)
-        candidates = (
-            await self._session.execute(
-                select(Booking).where(
-                    Booking.listing_id == listing_id,
-                    Booking.host_id == host.id,
-                    or_(
-                        and_(
-                            Booking.status == BookingStatus.CONFIRMED.value,
-                            func.lower(Booking.period) <= now + early,
-                            func.upper(Booking.period) > now,
-                        ),
-                        Booking.status == BookingStatus.CHECKED_IN.value,
-                    ),
-                )
-            )
-        ).scalars()
+        query = select(Booking).where(
+            Booking.host_id == host.id,
+            or_(
+                and_(
+                    Booking.status == BookingStatus.CONFIRMED.value,
+                    func.lower(Booking.period) <= now + early,
+                    func.upper(Booking.period) > now,
+                ),
+                Booking.status == BookingStatus.CHECKED_IN.value,
+            ),
+        )
+        if listing_id:
+            query = query.where(Booking.listing_id == listing_id)
+        candidates = (await self._session.execute(query)).scalars()
         matches = [b for b in candidates if self._access.verify_pin(b.id, pin)]
         if len(matches) != 1:
             raise Forbidden("PIN not recognised for a current booking", code="invalid_pin")
@@ -507,7 +505,7 @@ class BookingService:
         if qr_token:
             booking = await self._booking_from_qr(qr_token)
         else:
-            assert listing_id and pin
+            assert pin
             booking = await self._booking_from_pin(host, listing_id, pin, rules)
         if booking.host_id != host.id:
             raise Forbidden("This booking is for a different host", code="wrong_host")

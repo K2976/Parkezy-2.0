@@ -30,12 +30,14 @@ export default function SignIn() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen edges={['top', 'bottom']} contentStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: spacing.xxl }}>
-        <View style={{ gap: spacing.md, marginBottom: spacing.xl }}>
-          <IconOrb icon="car-sport-outline" size={64} />
-          <Text variant="display" accessibilityRole="header">
+        <View style={{ alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xl }}>
+          <IconOrb icon="car-sport-outline" size={72} />
+          <Text variant="display" accessibilityRole="header" style={{ textAlign: 'center', marginTop: spacing.xs }}>
             Parkezy
           </Text>
-          <Text variant="muted">Find a spot in seconds, or earn from the one you already have.</Text>
+          <Text variant="muted" style={{ textAlign: 'center', maxWidth: 290 }}>
+            Find a spot in seconds, or earn from the one you already have.
+          </Text>
         </View>
 
         {/* Form panel is strong glass; everything you touch inside it is clay. */}

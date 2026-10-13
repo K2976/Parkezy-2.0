@@ -8,6 +8,15 @@ from app.infra import metrics
 
 log = logging.getLogger("parkezy.access")
 
+# JSON API: nothing here should ever be sniffed as HTML, framed, or leak the URL to other sites.
+SECURITY_HEADERS = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"referrer-policy", b"no-referrer"),
+    (b"strict-transport-security", b"max-age=31536000; includeSubDomains"),
+    (b"cache-control", b"no-store"),
+]
+
 
 class RequestContextMiddleware:
     """Adds X-Request-ID and Server-Timing headers and logs one line per request."""
@@ -33,6 +42,7 @@ class RequestContextMiddleware:
                 message["headers"] += [
                     (b"x-request-id", request_id.encode()),
                     (b"server-timing", f"app;dur={elapsed:.1f}".encode()),
+                    *SECURITY_HEADERS,
                 ]
             await send(message)
 
