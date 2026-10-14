@@ -7,6 +7,8 @@ import type {
   Booking,
   Dispute,
   HostDashboard,
+  LegalDocKind,
+  LegalDocument,
   Listing,
   ListingInput,
   ListingSearchItem,
@@ -15,6 +17,8 @@ import type {
   PublicConfig,
   Quote,
   SlotInput,
+  SupportCategory,
+  SupportTicket,
   Tokens,
   UploadTicket,
   User,
@@ -64,7 +68,25 @@ export const meApi = {
     api.request<void>('/v1/me/push-tokens', { method: 'POST', body: { token, platform } }),
   removePushToken: (token: string, platform: 'ios' | 'android') =>
     api.request<void>('/v1/me/push-tokens/remove', { method: 'POST', body: { token, platform } }),
-  delete: () => api.request<{ message: string }>('/v1/me', { method: 'DELETE' }),
+  /** Requires the password again; the server rejects deletion while bookings are active. */
+  delete: (password: string) => api.request<{ message: string }>('/v1/me', { method: 'DELETE', body: { password } }),
+};
+
+export const supportApi = {
+  /** Works signed out too (email + name are then required/used); signed in, the account email is used. */
+  create: (body: {
+    category: SupportCategory;
+    subject: string;
+    message: string;
+    booking_id?: string | null;
+    email?: string | null;
+    name?: string | null;
+  }) => api.request<SupportTicket>('/v1/support', { method: 'POST', body }),
+  mine: () => api.request<SupportTicket[]>('/v1/support/tickets'),
+};
+
+export const legalApi = {
+  get: (doc: LegalDocKind) => api.request<LegalDocument>(`/v1/legal/${doc}`, { auth: false }),
 };
 
 export const discoveryApi = {

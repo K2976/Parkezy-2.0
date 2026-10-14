@@ -1,0 +1,7 @@
+Hi {{ name }},
+
+Thanks for contacting {{ app_name }} support. Your request #{{ reference }} ("{{ subject }}") has reached our team, and we usually reply within 1 business day.
+
+If you need to add anything, reply to this email or send a new request from the app and mention #{{ reference }}.
+
+- The {{ app_name }} team

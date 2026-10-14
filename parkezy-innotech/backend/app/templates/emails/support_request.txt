@@ -1,0 +1,12 @@
+New support request #{{ reference }}
+
+From: {{ name }} <{{ email }}>{% if not signed_in %} (not signed in, account not verified){% endif %}
+Category: {{ category }}
+{% if booking_id %}Booking: {{ booking_id }}
+{% endif %}Ticket: {{ ticket_id }}
+
+Subject: {{ subject }}
+
+{{ message }}
+
+Reply to the customer at {{ email }}.

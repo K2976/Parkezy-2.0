@@ -1,10 +1,9 @@
-import * as WebBrowser from 'expo-web-browser';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
-import { env } from '@/config/env';
 import { Banner, Button, Card, Screen, Text, TextField } from '@/ui/components';
 import { fonts, spacing, useTheme } from '@/ui/theme';
 
@@ -86,11 +85,11 @@ export default function SignUp() {
         </Card>
         <Text variant="small" style={{ marginTop: spacing.lg, textAlign: 'center' }}>
           By continuing you agree to our{' '}
-          <Text variant="small" style={{ fontFamily: fonts.bodyBold, color: colors.accent }} onPress={() => WebBrowser.openBrowserAsync(env.termsUrl)}>
+          <Text variant="small" style={{ fontFamily: fonts.bodyBold, color: colors.accent }} onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })}>
             Terms
           </Text>{' '}
           and{' '}
-          <Text variant="small" style={{ fontFamily: fonts.bodyBold, color: colors.accent }} onPress={() => WebBrowser.openBrowserAsync(env.privacyUrl)}>
+          <Text variant="small" style={{ fontFamily: fonts.bodyBold, color: colors.accent }} onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })}>
             Privacy Policy
           </Text>
           .

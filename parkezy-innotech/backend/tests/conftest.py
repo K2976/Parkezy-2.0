@@ -144,7 +144,7 @@ async def database() -> AsyncIterator[None]:
 TRUNCATE = (
     "TRUNCATE users, refresh_tokens, verification_codes, push_tokens, listings, slots, uploads, listing_media, "
     "bookings, payments, ledger_entries, notifications, outbox_events, email_log, email_suppressions, "
-    "webhook_events, disputes, notification_preferences RESTART IDENTITY CASCADE"
+    "webhook_events, disputes, notification_preferences, support_tickets RESTART IDENTITY CASCADE"
 )
 
 

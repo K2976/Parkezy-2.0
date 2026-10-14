@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.db.models import Booking, Dispute, User
+from app.db.models import Booking, Dispute, SupportTicket, User
 from app.services.booking_service import BookingService, BookingView
 from app.services.email_service import EmailService
 from app.services.notification_service import EmailSpec, NotificationService
@@ -129,6 +129,36 @@ async def on_account_deleted(ctx: HandlerContext, event_id: str, payload: dict) 
         template="account_deleted",
         context={"name": payload["full_name"]},
         dedupe_key=f"{event_id}:account_deleted",
+    )
+
+
+@handles(Event.SUPPORT_REQUESTED)
+async def on_support_requested(ctx: HandlerContext, event_id: str, payload: dict) -> None:
+    ticket = await ctx.session.get(SupportTicket, uuid.UUID(payload["ticket_id"]))
+    if ticket is None:
+        return
+    s = ctx.settings
+    context = {
+        "ticket_id": str(ticket.id),
+        "reference": str(ticket.id)[-8:].upper(),
+        "name": ticket.name or "there",
+        "email": ticket.email,
+        "category": ticket.category,
+        "subject": ticket.subject,
+        "message": ticket.message,
+        "booking_id": str(ticket.booking_id) if ticket.booking_id else None,
+        "signed_in": ticket.user_id is not None,
+    }
+    # Each send has its own dedupe key, so a retry after one succeeded never repeats it.
+    await ctx.email.send(
+        to=s.support_email, template="support_request", context=context, dedupe_key=f"{event_id}:support_inbox"
+    )
+    await ctx.email.send(
+        to=ticket.email,
+        template="support_received",
+        context=context,
+        dedupe_key=f"{event_id}:support_ack",
+        user_id=ticket.user_id,
     )
 
 

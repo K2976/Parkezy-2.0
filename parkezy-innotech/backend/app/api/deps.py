@@ -90,6 +90,18 @@ async def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
+async def get_optional_user(
+    services: ServicesDep, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]
+) -> User | None:
+    """The signed-in user, or None when no token is sent. A token that IS sent must be valid."""
+    if credentials is None:
+        return None
+    return await get_current_user(services, credentials)
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
 async def get_host(user: CurrentUser) -> User:
     if not user.is_host:
         raise Forbidden("Host account required", code="not_a_host")

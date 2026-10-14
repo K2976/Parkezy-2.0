@@ -64,6 +64,14 @@ class Settings(BaseSettings):
         default=False, description="Use X-Forwarded-For for client IP (only behind a trusted proxy)"
     )
 
+    # --- Support & legal (shown in the Terms / Privacy Policy and used for support tickets) ---
+    support_email: str = "support@parkezy.com"
+    legal_entity_name: str = "Parkezy"
+    legal_address: str = "Bengaluru, Karnataka, India"
+    # Grievance Officer required by the IT Rules 2021 and the DPDP Act 2023; defaults to support.
+    grievance_officer_name: str = "Grievance Officer, Parkezy"
+    grievance_officer_email: str | None = None
+
     # --- Database ---
     database_url: str
     # Optional streaming replica for read-heavy discovery (search, listing pages). Empty = primary.

@@ -278,3 +278,27 @@ export type ListingInput = {
   status?: ListingStatus;
   clear_daily_cap?: boolean;
 };
+
+export type SupportCategory = 'account' | 'booking' | 'payment' | 'hosting' | 'privacy' | 'bug' | 'other';
+
+export type SupportTicket = {
+  id: string;
+  reference: string;
+  category: SupportCategory;
+  subject: string;
+  status: 'open' | 'resolved';
+  created_at: string;
+};
+
+export type LegalDocKind = 'terms' | 'privacy';
+
+export type LegalBlock = { type: 'paragraph'; text: string } | { type: 'list'; items: string[] };
+
+export type LegalDocument = {
+  doc: LegalDocKind;
+  title: string;
+  version: string;
+  effective_date: string;
+  summary: string;
+  sections: { heading: string; blocks: LegalBlock[] }[];
+};

@@ -255,3 +255,38 @@ async def test_pagination_cursor(h: Harness):
         if not cursor:
             break
     assert seen == list(reversed(ids))
+
+
+async def test_pin_check_in_explains_why_a_correct_pin_cannot_be_used(h: Harness):
+    host = await make_host(h)
+    listing = await create_listing(h, host)
+    driver = await register(h)
+    b = (await book(h, driver, listing)).json()  # starts in ~2 hours
+    pin = (await h.client.get(f"/v1/bookings/{b['id']}/access", headers=auth(driver["token"]))).json()["pin"]
+
+    # Correct PIN, too early: the host is told when check-in opens (not "PIN not recognised").
+    r = await h.client.post("/v1/host/access/verify", json={"pin": pin}, headers=auth(host["token"]))
+    assert r.status_code == 409 and r.json()["error"]["code"] == "too_early", r.text
+    assert "Check-in opens at" in r.json()["error"]["message"]
+
+    # Signed in as someone else (e.g. the driver's own account): never matches another host's booking.
+    other = await make_host(h)
+    r = await h.client.post("/v1/host/access/verify", json={"pin": pin}, headers=auth(other["token"]))
+    assert r.status_code == 403 and r.json()["error"]["code"] == "invalid_pin"
+    assert "signed in as the host" in r.json()["error"]["message"]
+
+    # A request the host hasn't approved yet.
+    manual = await create_listing(h, host, auto_accept=False, title="Gated society bay")
+    request = (await book(h, driver, manual)).json()
+    assert request["status"] == "pending_approval"
+    request_pin = h.container.access_codes.pin_for(uuid.UUID(request["id"]))
+    r = await h.client.post("/v1/host/access/verify", json={"pin": request_pin}, headers=auth(host["token"]))
+    assert r.status_code == 409 and r.json()["error"]["code"] == "needs_approval", r.text
+
+    # Inside the window the same PIN checks the driver in, and again checks them out.
+    h.clock.advance(seconds=(parse(b["starts_at"]) - h.clock.now()).total_seconds() - 5 * 60)
+    await relogin(h, host)
+    r = await h.client.post("/v1/host/access/verify", json={"pin": pin}, headers=auth(host["token"]))
+    assert r.status_code == 200 and r.json()["action"] == "checked_in", r.text
+    r = await h.client.post("/v1/host/access/verify", json={"pin": pin}, headers=auth(host["token"]))
+    assert r.status_code == 200 and r.json()["action"] == "checked_out", r.text

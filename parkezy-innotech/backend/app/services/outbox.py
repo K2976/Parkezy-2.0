@@ -27,6 +27,7 @@ class Event(StrEnum):
     DISPUTE_CREATED = "dispute.created"
     DISPUTE_UPDATED = "dispute.updated"
     ACCOUNT_DELETED = "account.deleted"
+    SUPPORT_REQUESTED = "support.requested"
 
 
 class Outbox:

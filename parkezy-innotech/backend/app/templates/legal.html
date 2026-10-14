@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{{ doc.title }} · {{ app_name }}</title>
+<style>
+  :root { --bg: #F4F1FA; --card: #ffffff; --text: #332F3A; --muted: #635F69; --accent: #6E5BC4; --line: #EFEBF5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #17141D; --card: #221E2A; --text: #ECE8F3; --muted: #A9A3B3; --accent: #B3A5F0; --line: #332D3D; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  .brand { color: var(--accent); font-weight: 800; font-size: 20px; text-decoration: none; }
+  article { background: var(--card); border-radius: 28px; padding: 28px clamp(20px, 5vw, 44px); margin-top: 20px; }
+  h1 { font-size: clamp(28px, 6vw, 36px); line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.5px; }
+  .meta { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+  .summary { background: var(--bg); border-radius: 18px; padding: 16px 20px; margin: 0 0 8px; }
+  h2 { font-size: 19px; margin: 32px 0 8px; }
+  ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  p { margin: 8px 0; }
+  footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 24px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="#">{{ app_name }}</a>
+  <article>
+    <h1>{{ doc.title }}</h1>
+    <p class="meta">Version {{ doc.version }} · Effective {{ doc.effective_date }}</p>
+    <p class="summary">{{ doc.summary }}</p>
+    {% for section in doc.sections %}
+    <h2>{{ section.heading }}</h2>
+    {% for block in section.blocks %}
+      {% if block.type == "list" %}
+      <ul>{% for item in block["items"] %}<li>{{ item }}</li>{% endfor %}</ul>
+      {% else %}
+      <p>{{ block.text }}</p>
+      {% endif %}
+    {% endfor %}
+    {% endfor %}
+  </article>
+  <footer><a href="{{ other_doc }}">{{ other_title }}</a></footer>
+</main>
+</body>
+</html>

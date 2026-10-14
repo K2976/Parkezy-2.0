@@ -89,6 +89,21 @@ class UploadStatus(StrEnum):
     UPLOADED = "uploaded"
 
 
+class SupportCategory(StrEnum):
+    ACCOUNT = "account"
+    BOOKING = "booking"
+    PAYMENT = "payment"
+    HOSTING = "hosting"
+    PRIVACY = "privacy"
+    BUG = "bug"
+    OTHER = "other"
+
+
+class SupportStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+
+
 class DisputeReason(StrEnum):
     SPOT_OCCUPIED = "spot_occupied"
     ACCESS_DENIED = "access_denied"

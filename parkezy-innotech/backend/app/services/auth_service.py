@@ -252,9 +252,13 @@ class AuthService:
         self._outbox.add(Event.PASSWORD_CHANGED, {"user_id": str(user.id)})
         await self._session.commit()
 
-    async def change_password(self, user: User, *, current_password: str, new_password: str) -> None:
-        if not user.password_hash or not self._hasher.verify(user.password_hash, current_password):
+    def confirm_password(self, user: User, password: str) -> None:
+        """Re-authentication for sensitive actions: a stolen unlocked phone is not enough."""
+        if not user.password_hash or not self._hasher.verify(user.password_hash, password):
             raise Forbidden("Current password is incorrect", code="invalid_credentials")
+
+    async def change_password(self, user: User, *, current_password: str, new_password: str) -> None:
+        self.confirm_password(user, current_password)
         user.password_hash = self._hasher.hash(new_password)
         await self.revoke_all_sessions(user.id)
         self._outbox.add(Event.PASSWORD_CHANGED, {"user_id": str(user.id)})

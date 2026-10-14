@@ -34,6 +34,15 @@ function createQueryClient() {
 
 function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
   const { status } = useAuth();
+  const { colors } = useTheme();
+  const header = {
+    headerShown: true,
+    headerBackButtonDisplayMode: 'minimal' as const,
+    headerShadowVisible: false,
+    headerTintColor: colors.accent,
+    headerTitleStyle: { fontFamily: fonts.heading, color: colors.text },
+    headerStyle: { backgroundColor: colors.canvas },
+  };
   const ready = status !== 'loading' && fontsReady;
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -47,6 +56,9 @@ function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
       <Stack.Protected guard={status === 'signedOut'}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
+      {/* Reachable signed in or out: sign-up links to the legal pages, and locked-out users need support. */}
+      <Stack.Screen name="legal/[doc]" options={{ ...header, title: '' }} />
+      <Stack.Screen name="support" options={{ ...header, title: 'Contact support' }} />
     </Stack>
   );
 }

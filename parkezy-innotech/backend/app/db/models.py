@@ -303,3 +303,17 @@ class Dispute(UUIDPk, Timestamps, Base):
     status: Mapped[str] = mapped_column(String(16))
     resolution: Mapped[str | None] = mapped_column(Text)
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+
+
+class SupportTicket(UUIDPk, Timestamps, Base):
+    __tablename__ = "support_tickets"
+
+    # Null when sent from the sign-in screen (people who cannot log in need help the most).
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    email: Mapped[str] = mapped_column(CITEXT)
+    name: Mapped[str | None] = mapped_column(String(120))
+    category: Mapped[str] = mapped_column(String(16))
+    subject: Mapped[str] = mapped_column(String(160))
+    message: Mapped[str] = mapped_column(Text)
+    booking_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("bookings.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(16))
