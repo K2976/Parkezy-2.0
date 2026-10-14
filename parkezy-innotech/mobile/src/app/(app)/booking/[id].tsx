@@ -161,8 +161,11 @@ export default function BookingDetail() {
     refetchInterval: (q) => (q.state.data && LIVE.includes(q.state.data.status) ? 20_000 : false),
   });
 
-  const refreshAll = () => {
-    queryClient.invalidateQueries({ queryKey: ['bookings'] });
+  const refreshAll = (updated?: Booking) => {
+    // Show the new state at once (e.g. hides the access pass after "End parking"), and don't re-request
+    // access codes here: the server rightly refuses them (409) once a booking has ended.
+    if (updated) queryClient.setQueryData(keys.booking(id), updated);
+    queryClient.invalidateQueries({ queryKey: ['bookings'], predicate: (q) => q.queryKey[2] !== 'access' });
     queryClient.invalidateQueries({ queryKey: ['host'] });
   };
   const cancel = useMutation({ mutationFn: () => bookingApi.cancel(id), onSuccess: refreshAll });
@@ -172,7 +175,7 @@ export default function BookingDetail() {
   const pay = useMutation({
     mutationFn: () => payForBooking(id, Constants.expoConfig?.name ?? 'Parkezy', colors.accent),
     onMutate: () => setPayError(null),
-    onSuccess: refreshAll,
+    onSuccess: () => refreshAll(),
     onError: (e) => !(e instanceof PaymentCancelledError) && setPayError(errorMessage(e)),
   });
 

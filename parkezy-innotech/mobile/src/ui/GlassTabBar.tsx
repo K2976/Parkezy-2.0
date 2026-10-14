@@ -88,47 +88,62 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
               onPress={onPress}
               scaleTo={0.94}
               style={{ flex: 1, alignItems: 'center' }}>
-              <View
-                style={{
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  // Fixed size so every tab's bubble is the same shape regardless of label length.
-                  width: 76,
-                  height: 50,
-                  borderRadius: radius.pill,
-                  backgroundColor: focused ? colors.clayRecessed : 'transparent',
-                  boxShadow: focused ? shadows.clayPressed : undefined,
-                  borderWidth: focused ? 1 : 0,
-                  borderColor: focused ? colors.glassBorder : 'transparent',
-                  overflow: 'hidden',
-                  gap: 2,
-                }}>
-                <Ionicons name={iconName} size={21} color={focused ? colors.accent : colors.muted} />
-                <RNText
-                  numberOfLines={1}
+              <View style={{ position: 'relative' }}>
+                <View
                   style={{
-                    fontFamily: focused ? fonts.heading : fonts.bodyMedium,
-                    fontSize: 11,
-                    color: focused ? colors.accent : colors.muted,
-                    letterSpacing: 0.2,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    // Fixed size so every tab's bubble is the same shape regardless of label length.
+                    width: 76,
+                    height: 50,
+                    borderRadius: radius.pill,
+                    backgroundColor: focused ? colors.clayRecessed : 'transparent',
+                    boxShadow: focused ? shadows.clayPressed : undefined,
+                    borderWidth: focused ? 1 : 0,
+                    borderColor: focused ? colors.glassBorder : 'transparent',
+                    overflow: 'hidden',
+                    gap: 2,
                   }}>
-                  {label}
-                </RNText>
+                  <Ionicons name={iconName} size={21} color={focused ? colors.accent : colors.muted} />
+                  <RNText
+                    numberOfLines={1}
+                    style={{
+                      fontFamily: focused ? fonts.heading : fonts.bodyMedium,
+                      fontSize: 11,
+                      color: focused ? colors.accent : colors.muted,
+                      letterSpacing: 0.2,
+                    }}>
+                    {label}
+                  </RNText>
+                </View>
+                {/* Badge lives outside the bubble (which clips to its pill shape) so it is never cut off or covered. */}
                 {badge ? (
                   <View
+                    pointerEvents="none"
                     style={{
                       position: 'absolute',
-                      top: 2,
-                      right: 4,
-                      minWidth: 16,
-                      height: 16,
-                      borderRadius: 8,
-                      paddingHorizontal: 3,
+                      top: 1,
+                      left: 44,
+                      zIndex: 2,
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      paddingHorizontal: 4,
                       backgroundColor: colors.danger,
+                      borderWidth: 2,
+                      borderColor: colors.clay,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                    <RNText style={{ color: colors.onAccent, fontFamily: fonts.bodyBold, fontSize: 9 }}>{badge}</RNText>
+                    <RNText
+                      style={{
+                        color: colors.onAccent,
+                        fontFamily: fonts.bodyBold,
+                        fontSize: 10,
+                        lineHeight: 12,
+                      }}>
+                      {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+                    </RNText>
                   </View>
                 ) : null}
               </View>

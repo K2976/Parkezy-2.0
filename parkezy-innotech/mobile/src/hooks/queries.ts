@@ -13,6 +13,9 @@ export const keys = {
   hostListings: ['host', 'listings'] as const,
   hostListing: (id: string) => ['host', 'listings', id] as const,
   hostBookings: (group?: string) => ['host', 'bookings', group ?? 'all'] as const,
+  // First page only (Host tab). Must not share a key with the paged list above: one cache entry can't
+  // hold both a plain page and an infinite-query result. Same prefix so invalidations still hit it.
+  hostBookingsPreview: (group: string) => ['host', 'bookings', group, 'preview'] as const,
   notifications: ['notifications'] as const,
   disputes: ['disputes'] as const,
 };

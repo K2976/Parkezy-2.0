@@ -19,6 +19,15 @@ celery.conf.update(
     worker_prefetch_multiplier=1,
     task_ignore_result=True,
     broker_connection_retry_on_startup=True,
+    broker_pool_limit=settings.celery_broker_pool_limit,
+    broker_transport_options={
+        "socket_timeout": settings.redis_socket_timeout_seconds,
+        "socket_connect_timeout": settings.redis_socket_timeout_seconds,
+        "health_check_interval": settings.redis_health_check_seconds,
+    },
+    # The API publishes "wake up" nudges inline; a dead broker must not stall requests. Beat's
+    # periodic sweeps pick up anything a failed nudge missed (transactional outbox).
+    task_publish_retry_policy={"max_retries": 2, "interval_start": 0, "interval_step": 0.2, "interval_max": 0.5},
     timezone="UTC",
     beat_schedule={
         "outbox-sweep": {"task": f"{TASK_PREFIX}process_outbox", "schedule": float(settings.outbox_sweep_seconds)},

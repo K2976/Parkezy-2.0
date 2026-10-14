@@ -5,11 +5,13 @@ in the `platform_settings` table so an admin can change them at runtime
 (see app/services/settings_service.py).
 """
 
+import os
 from functools import lru_cache
 from typing import Annotated, Literal
 
 from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 def _split_csv(value: object) -> object:
@@ -18,8 +20,36 @@ def _split_csv(value: object) -> object:
     return value
 
 
+def normalize_database_url(value: object) -> object:
+    """Accept provider connection strings as-is (Neon, Render, Supabase all hand out libpq URLs).
+
+    asyncpg takes `ssl=`, not libpq's `sslmode=`, and rejects `channel_binding=` outright, so a
+    pasted `postgresql://…?sslmode=require&channel_binding=require` would fail at first connect.
+    """
+    if not isinstance(value, str) or not value:
+        return value
+    url = make_url(value)
+    if url.drivername in ("postgres", "postgresql", "postgresql+psycopg2", "postgresql+psycopg"):
+        url = url.set(drivername="postgresql+asyncpg")
+    query = dict(url.query)
+    query.pop("channel_binding", None)  # SCRAM channel binding is negotiated by asyncpg itself
+    if "sslmode" in query:
+        query.setdefault("ssl", query.pop("sslmode"))
+    return url.set(query=query).render_as_string(hide_password=False)
+
+
+def uses_pgbouncer(url: str) -> bool:
+    """Neon's pooled endpoint (`*-pooler.*`) is PgBouncer in transaction mode."""
+    return "-pooler." in (make_url(url).host or "")
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # ENV_FILE picks another file, e.g. ENV_FILE=.env.production for the hosted services.
+    # env_ignore_empty: `RESEND_WEBHOOK_SECRET=` in a .env means "not configured" (None), never an
+    # empty secret — an empty HMAC key would let anyone forge signatures.
+    model_config = SettingsConfigDict(
+        env_file=os.environ.get("ENV_FILE", ".env"), env_file_encoding="utf-8", extra="ignore", env_ignore_empty=True
+    )
 
     # --- App ---
     app_env: Literal["local", "test", "staging", "production"] = "local"
@@ -41,10 +71,25 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
     db_max_overflow: int = 10
     db_echo: bool = False
+    # Recycle before the provider's idle timeout closes the socket under us (Neon, PgBouncer, cloud LBs).
+    db_pool_recycle_seconds: int = 300
+    # Disable asyncpg statement caching for transaction-mode PgBouncer. Empty = auto-detect `-pooler` hosts.
+    db_pgbouncer: bool | None = None
+    # Client-side per-statement ceiling (asyncpg command_timeout) so one slow query cannot pin a
+    # pooled connection forever. Client-side because PgBouncer drops server startup parameters.
+    db_command_timeout_seconds: float = 15.0
 
     # --- Redis / jobs ---
     redis_url: str
+    # Bounded timeouts: the rate limiter and cache fail open on RedisError, which only helps if
+    # a hung Redis actually raises instead of stalling every request.
+    redis_socket_timeout_seconds: float = 2.0
+    redis_health_check_seconds: int = 30
+    # Per process. Hosted free tiers cap clients (Redis Cloud free: 30), and API workers, Celery
+    # workers and beat all share that budget, so keep each pool small and wait for a free slot.
+    redis_max_connections: int = 10
     celery_broker_url: str | None = None
+    celery_broker_pool_limit: int = 4
     outbox_sweep_seconds: int = 30
     outbox_batch_size: int = 50
     outbox_max_attempts: int = 10
@@ -143,6 +188,7 @@ class Settings(BaseSettings):
     )
 
     _csv = field_validator("cors_origins", "admin_emails", "upload_allowed_types", mode="before")(_split_csv)
+    _db_url = field_validator("database_url", "database_read_url", mode="before")(normalize_database_url)
 
     @field_validator("admin_emails")
     @classmethod
@@ -167,7 +213,12 @@ class Settings(BaseSettings):
                     raise ValueError(f"{name.upper()} must be at least 32 characters in production")
             if self.email_provider == "console":
                 raise ValueError("EMAIL_PROVIDER=console is not allowed in production")
+            if "*" in self.cors_origins:
+                raise ValueError("CORS_ORIGINS=* is not allowed in production; list the allowed origins")
         return self
+
+    def pgbouncer_for(self, url: str) -> bool:
+        return self.db_pgbouncer if self.db_pgbouncer is not None else uses_pgbouncer(url)
 
     @property
     def broker_url(self) -> str:

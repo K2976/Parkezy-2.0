@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 
 import { errorMessage } from '@/api/client';
@@ -36,6 +36,9 @@ export default function VerifyEmail() {
       setMessage({ tone: 'danger', text: errorMessage(e) });
     }
   };
+
+  // Already verified (e.g. opened from an old link): nothing to do here.
+  if (user?.email_verified && !message) return <Redirect href="/" />;
 
   return (
     <Screen>

@@ -29,7 +29,7 @@ import {
   TextField,
 } from '@/ui/components';
 import { fonts, radius, spacing, useTheme } from '@/ui/theme';
-import { type Window, WhenPicker, windowIso } from '@/ui/WhenPicker';
+import { defaultWindow, type Window, WhenPicker, windowIso } from '@/ui/WhenPicker';
 import { money, titleCase, WEEKDAYS } from '@/utils/format';
 import { minutesBetween } from '@/utils/time';
 
@@ -212,7 +212,8 @@ export default function ListingDetail() {
         <Section title="When">
           <WhenPicker
             config={config.data}
-            value={when ?? { start: new Date(), minutes: config.data.min_booking_minutes }}
+            // Aligned to the booking step: a raw `new Date()` carries seconds and the server rejects it.
+            value={when ?? defaultWindow(config.data)}
             onChange={(w) => {
               setWhen(w);
               setSlotId(null);

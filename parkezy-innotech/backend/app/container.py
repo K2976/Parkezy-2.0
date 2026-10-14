@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import httpx
-from redis.asyncio import Redis
+from redis.asyncio import BlockingConnectionPool, Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.core.clock import Clock, SystemClock
@@ -116,7 +116,18 @@ def build_container(settings: Settings, *, jobs: JobQueue, pooled_db: bool = Tru
         if settings.database_read_url
         else engine
     )
-    redis = Redis.from_url(settings.redis_url, decode_responses=False)
+    # from_pool hands ownership to the client, so Container.aclose() also closes the pool.
+    redis = Redis.from_pool(
+        BlockingConnectionPool.from_url(
+            settings.redis_url,
+            max_connections=settings.redis_max_connections,
+            timeout=settings.redis_socket_timeout_seconds,  # wait this long for a free pooled connection
+            socket_timeout=settings.redis_socket_timeout_seconds,
+            socket_connect_timeout=settings.redis_socket_timeout_seconds,
+            health_check_interval=settings.redis_health_check_seconds,
+            decode_responses=False,
+        )
+    )
     http = httpx.AsyncClient(timeout=settings.http_timeout_seconds)
     clock: Clock = overrides.pop("clock", None) or SystemClock()
     parts: dict = dict(

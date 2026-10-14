@@ -4,6 +4,7 @@ import os
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.core.config import normalize_database_url
 from app.db import models  # noqa: F401  (registers tables on metadata)
 from app.db.base import Base
 
@@ -16,7 +17,8 @@ def _database_url() -> str:
         from app.core.config import get_settings
 
         url = get_settings().database_url
-    return url
+    # DDL goes to Neon's direct endpoint, not the transaction-mode PgBouncer in front of it.
+    return str(normalize_database_url(url)).replace("-pooler.", ".", 1)
 
 
 def run_migrations_offline() -> None:

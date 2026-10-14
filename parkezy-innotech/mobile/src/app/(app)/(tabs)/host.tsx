@@ -94,7 +94,7 @@ export default function HostHome() {
   const dashboard = useQuery({ queryKey: keys.hostDashboard, queryFn: () => hostApi.dashboard(PERIOD_DAYS), enabled: !!user?.is_host });
   const listings = useQuery({ queryKey: keys.hostListings, queryFn: hostApi.listings, enabled: !!user?.is_host });
   const requests = useQuery({
-    queryKey: keys.hostBookings('upcoming'),
+    queryKey: keys.hostBookingsPreview('upcoming'),
     queryFn: () => hostApi.bookings('upcoming'),
     enabled: !!user?.is_host,
     refetchInterval: 30_000,
