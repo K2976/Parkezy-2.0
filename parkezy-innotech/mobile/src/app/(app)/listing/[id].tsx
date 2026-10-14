@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Crypto from 'expo-crypto';
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
@@ -31,6 +30,7 @@ import {
 import { fonts, radius, spacing, useTheme } from '@/ui/theme';
 import { defaultWindow, type Window, WhenPicker, windowIso } from '@/ui/WhenPicker';
 import { money, titleCase, WEEKDAYS } from '@/utils/format';
+import { uuidV4 } from '@/utils/id';
 import { minutesBetween } from '@/utils/time';
 
 export default function ListingDetail() {
@@ -49,7 +49,7 @@ export default function ListingDetail() {
   const [vehicle, setVehicle] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
   // One key per booking attempt: retries after a network error never double-book.
-  const idempotencyKey = useRef(Crypto.randomUUID());
+  const idempotencyKey = useRef(uuidV4());
 
   const window = when ? windowIso(when) : undefined;
   const listing = useQuery({ queryKey: keys.listing(params.id, window), queryFn: () => discoveryApi.listing(params.id, window) });
@@ -67,7 +67,7 @@ export default function ListingDetail() {
         idempotencyKey.current,
       ),
     onSuccess: (booking) => {
-      idempotencyKey.current = Crypto.randomUUID();
+      idempotencyKey.current = uuidV4();
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['listings'] });
       void registerForPush(); // ask for notifications in context, right after booking

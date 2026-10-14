@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 
-import { errorMessage } from '@/api/client';
+import { ApiError, errorMessage } from '@/api/client';
 import { hostApi } from '@/api/endpoints';
 import type { AccessVerifyResult } from '@/api/types';
 import { keys } from '@/hooks/queries';
@@ -36,10 +36,15 @@ export default function ScanAccess() {
       setPin('');
       queryClient.invalidateQueries({ queryKey: ['host'] });
     },
+    // Clear the boxes after a failed PIN so the host can simply type it again.
+    onError: () => setPin(''),
     onSettled: () => {
       handling.current = false;
     },
   });
+  const errorCode = verify.error instanceof ApiError ? verify.error.code : null;
+  const pendingBookingId =
+    verify.error instanceof ApiError ? (verify.error.details as { booking_id?: string } | undefined)?.booking_id : undefined;
 
   const onScan = (data: string) => {
     if (handling.current || verify.isPending || result) return;
@@ -130,8 +135,18 @@ export default function ScanAccess() {
       />
 
       {verify.error ? (
-        <View style={{ marginTop: spacing.md }}>
-          <Banner tone="danger">{errorMessage(verify.error)}</Banner>
+        <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+          <Banner tone={errorCode === 'too_early' || errorCode === 'needs_approval' ? 'warning' : 'danger'}>
+            {errorMessage(verify.error)}
+          </Banner>
+          {errorCode === 'needs_approval' && pendingBookingId ? (
+            <Button
+              title="Review this request"
+              kind="secondary"
+              size="sm"
+              onPress={() => router.push({ pathname: '/booking/[id]', params: { id: pendingBookingId } })}
+            />
+          ) : null}
         </View>
       ) : null}
 
@@ -290,7 +305,7 @@ export default function ScanAccess() {
             title={verify.isPending ? 'Verifying PIN…' : pin.length === 6 ? 'Verify PIN & Check In / Out' : `Enter PIN (${pin.length}/6)`}
             onPress={() => verify.mutate({ pin, listing_id: listingId ?? undefined })}
             loading={verify.isPending}
-            disabled={pin.length < 4}
+            disabled={pin.length < 6 || verify.isPending}
           />
         </View>
       )}

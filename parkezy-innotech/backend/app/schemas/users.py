@@ -109,3 +109,7 @@ class NotificationPreferences(Schema):
 
     push: dict[NotificationCategory, bool] = {}
     email: dict[NotificationCategory, bool] = {}
+
+
+class DeleteAccountRequest(Schema):
+    password: str = Field(min_length=1, max_length=128)

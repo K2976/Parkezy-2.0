@@ -10,6 +10,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
@@ -477,27 +478,67 @@ class BookingService:
             raise Forbidden("This code was already used; ask the driver to refresh it", code="qr_replayed")
         return await self._get(uuid.UUID(payload["sub"]), lock=True)
 
-    async def _booking_from_pin(self, host: User, listing_id: uuid.UUID | None, pin: str, rules: PlatformRules) -> Booking:
+    async def _booking_from_pin(
+        self, host: User, listing_id: uuid.UUID | None, pin: str, rules: PlatformRules
+    ) -> Booking:
+        """Match the PIN against every live booking at this host's spots (not only ones inside the check-in
+        window), so the host learns WHY a correct PIN can't be used yet instead of "not recognised"."""
         now = self._clock.now()
-        early = timedelta(minutes=rules.early_checkin_minutes)
+        live = [
+            BookingStatus.PENDING_APPROVAL.value,
+            BookingStatus.PENDING_PAYMENT.value,
+            BookingStatus.CONFIRMED.value,
+            BookingStatus.CHECKED_IN.value,
+        ]
         query = select(Booking).where(
             Booking.host_id == host.id,
+            Booking.status.in_(live),
+            # Bounded: today's and upcoming bookings, plus anyone still parked from earlier.
             or_(
-                and_(
-                    Booking.status == BookingStatus.CONFIRMED.value,
-                    func.lower(Booking.period) <= now + early,
-                    func.upper(Booking.period) > now,
-                ),
-                Booking.status == BookingStatus.CHECKED_IN.value,
+                func.upper(Booking.period) > now - timedelta(hours=12), Booking.status == BookingStatus.CHECKED_IN.value
             ),
         )
         if listing_id:
             query = query.where(Booking.listing_id == listing_id)
         candidates = (await self._session.execute(query)).scalars()
         matches = [b for b in candidates if self._access.verify_pin(b.id, pin)]
-        if len(matches) != 1:
-            raise Forbidden("PIN not recognised for a current booking", code="invalid_pin")
-        return await self._get(matches[0].id, lock=True)
+        if not matches:
+            raise Forbidden(
+                "No booking at your spots matches this PIN. Check the digits, and that you're signed in "
+                "as the host of this parking spot.",
+                code="invalid_pin",
+            )
+        if len(matches) > 1:
+            # Two 6-digit PINs colliding at one host is rare; prefer the one that can act right now.
+            ready = [
+                b
+                for b in matches
+                if b.status == BookingStatus.CHECKED_IN.value or self._in_checkin_window(b, now, rules)
+            ]
+            if len(ready) != 1:
+                raise Conflict("This PIN matches more than one booking; choose the spot first", code="pin_ambiguous")
+            matches = ready
+        booking = matches[0]
+        if booking.status == BookingStatus.PENDING_APPROVAL.value:
+            raise Conflict(
+                "This is a booking request you haven't approved yet. Approve it in Bookings, then check the driver in.",
+                code="needs_approval",
+                details={"booking_id": str(booking.id)},
+            )
+        if booking.status == BookingStatus.PENDING_PAYMENT.value:
+            raise Conflict(
+                "The driver hasn't paid for this booking yet; ask them to complete payment in the app.",
+                code="awaiting_payment",
+                details={"booking_id": str(booking.id)},
+            )
+        return await self._get(booking.id, lock=True)
+
+    @staticmethod
+    def _in_checkin_window(booking: Booking, now: datetime, rules: PlatformRules) -> bool:
+        return (
+            booking.status == BookingStatus.CONFIRMED.value
+            and booking.starts_at - timedelta(minutes=rules.early_checkin_minutes) <= now < booking.ends_at
+        )
 
     async def verify_access(
         self, host: User, *, qr_token: str | None, listing_id: uuid.UUID | None, pin: str | None, rules: PlatformRules
@@ -517,12 +558,16 @@ class BookingService:
 
     async def _check_in(self, booking: Booking, rules: PlatformRules) -> BookingView:
         now = self._clock.now()
-        if now < booking.starts_at - timedelta(minutes=rules.early_checkin_minutes):
+        opens_at = booking.starts_at - timedelta(minutes=rules.early_checkin_minutes)
+        if now < opens_at:
+            tz = ZoneInfo((await self._session.get(Listing, booking.listing_id)).timezone)
             raise Conflict(
-                "Too early to check in", code="too_early", details={"starts_at": booking.starts_at.isoformat()}
+                f"Too early to check in. Check-in opens at {opens_at.astimezone(tz):%I:%M %p on %d %b}.",
+                code="too_early",
+                details={"starts_at": booking.starts_at.isoformat(), "check_in_opens_at": opens_at.isoformat()},
             )
         if now >= booking.ends_at:
-            raise Conflict("This booking has ended", code="booking_ended")
+            raise Conflict("This booking has already ended, so it can't be checked in", code="booking_ended")
         booking_state.ensure_transition(booking.status, BookingStatus.CHECKED_IN)
         booking.status = BookingStatus.CHECKED_IN.value
         booking.checked_in_at = now

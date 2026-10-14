@@ -27,6 +27,7 @@ export default function AppLayout() {
       <Stack.Screen name="host/scan" options={{ title: 'Check a driver in or out' }} />
       <Stack.Screen name="account/profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="account/password" options={{ title: 'Change password' }} />
+      <Stack.Screen name="account/delete" options={{ title: 'Delete account' }} />
     </Stack>
   );
 }

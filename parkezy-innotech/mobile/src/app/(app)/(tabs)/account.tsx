@@ -1,10 +1,6 @@
-import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import { Alert, Linking, View } from 'react-native';
+import { View } from 'react-native';
 
-import { errorMessage } from '@/api/client';
-import { meApi } from '@/api/endpoints';
 import { useAuth } from '@/auth/AuthProvider';
 import { env } from '@/config/env';
 import { Banner, Card, ListItem, Pill, Row, Screen, Section, Text } from '@/ui/components';
@@ -23,17 +19,6 @@ function initials(name: string) {
 export default function Account() {
   const { user, signOut } = useAuth();
   const { colors, shadows } = useTheme();
-  const remove = useMutation({ mutationFn: meApi.delete, onSuccess: () => signOut() });
-
-  const confirmDelete = () =>
-    Alert.alert(
-      'Delete your account?',
-      'Your profile and personal details are removed permanently. You need to finish or cancel active bookings first.',
-      [
-        { text: 'Keep account', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => remove.mutate() },
-      ],
-    );
 
   return (
     <Screen edges={['top']}>
@@ -77,11 +62,6 @@ export default function Account() {
           </Banner>
         </View>
       ) : null}
-      {remove.error ? (
-        <View style={{ marginTop: spacing.md }}>
-          <Banner tone="danger">{errorMessage(remove.error)}</Banner>
-        </View>
-      ) : null}
 
       <Section title="Account">
         <ListItem icon="notifications-outline" title="Notifications" onPress={() => router.push('/notifications')} />
@@ -90,14 +70,22 @@ export default function Account() {
       </Section>
 
       <Section title="Help">
-        <ListItem icon="mail-outline" title="Contact support" subtitle={env.supportEmail} onPress={() => Linking.openURL(`mailto:${env.supportEmail}`)} />
-        <ListItem icon="document-text-outline" title="Terms of service" onPress={() => WebBrowser.openBrowserAsync(env.termsUrl)} />
-        <ListItem icon="shield-checkmark-outline" title="Privacy policy" onPress={() => WebBrowser.openBrowserAsync(env.privacyUrl)} />
+        <ListItem icon="chatbubbles-outline" title="Contact support" subtitle={env.supportEmail} onPress={() => router.push('/support')} />
+        <ListItem
+          icon="document-text-outline"
+          title="Terms of service"
+          onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })}
+        />
+        <ListItem
+          icon="shield-checkmark-outline"
+          title="Privacy policy"
+          onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })}
+        />
       </Section>
 
       <Section title="Session">
         <ListItem icon="log-out-outline" title="Sign out" onPress={() => signOut()} />
-        <ListItem icon="trash-outline" title="Delete account" danger onPress={confirmDelete} />
+        <ListItem icon="trash-outline" title="Delete account" danger onPress={() => router.push('/account/delete')} />
       </Section>
     </Screen>
   );

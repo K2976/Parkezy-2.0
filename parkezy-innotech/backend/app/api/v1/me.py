@@ -1,9 +1,9 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
-from app.api.deps import CurrentUser, ServicesDep
+from app.api.deps import CurrentUser, RateLimit, ServicesDep
 from app.api.presenters import user_out
 from app.schemas.common import Message
-from app.schemas.users import NotificationPreferences, ProfileUpdate, PushTokenRequest, UserOut
+from app.schemas.users import DeleteAccountRequest, NotificationPreferences, ProfileUpdate, PushTokenRequest, UserOut
 
 router = APIRouter(prefix="/me", tags=["account"])
 
@@ -33,9 +33,10 @@ async def remove_push_token(body: PushTokenRequest, user: CurrentUser, services:
     await services.users().remove_push_token(user, body.token)
 
 
-@router.delete("", response_model=Message)
-async def delete_account(user: CurrentUser, services: ServicesDep) -> Message:
-    await services.users().delete_account(user)
+# Requires the password again, under the strict sign-in limit so it cannot be used to guess passwords.
+@router.delete("", response_model=Message, dependencies=[Depends(RateLimit("auth", "rate_limit_auth_per_window"))])
+async def delete_account(body: DeleteAccountRequest, user: CurrentUser, services: ServicesDep) -> Message:
+    await services.users().delete_account(user, body.password)
     return Message(message="Your account has been deleted")
 
 

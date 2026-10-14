@@ -3,9 +3,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import Field
+from pydantic import EmailStr, Field
 
-from app.domain.enums import DisputeReason, DisputeStatus, PaymentMode, UploadPurpose
+from app.domain.enums import DisputeReason, DisputeStatus, PaymentMode, SupportCategory, UploadPurpose
 from app.schemas.common import Schema
 
 
@@ -164,3 +164,42 @@ class OutboxEventOut(Schema):
 class QueueStatsOut(Schema):
     pending: int
     dead: int
+
+
+class SupportCreate(Schema):
+    category: SupportCategory
+    subject: str = Field(min_length=3, max_length=160)
+    message: str = Field(min_length=10, max_length=5000)
+    booking_id: uuid.UUID | None = None
+    # Only used when signed out; a signed-in user's account email is always used instead.
+    email: EmailStr | None = None
+    name: str | None = Field(default=None, max_length=120)
+
+
+class SupportTicketOut(Schema):
+    id: uuid.UUID
+    reference: str
+    category: SupportCategory
+    subject: str
+    status: str
+    created_at: datetime
+
+
+class LegalBlockOut(Schema):
+    type: str
+    text: str | None = None
+    items: list[str] | None = None
+
+
+class LegalSectionOut(Schema):
+    heading: str
+    blocks: list[LegalBlockOut]
+
+
+class LegalDocOut(Schema):
+    doc: str
+    title: str
+    version: str
+    effective_date: str
+    summary: str
+    sections: list[LegalSectionOut]

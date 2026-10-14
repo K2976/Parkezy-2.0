@@ -14,6 +14,7 @@ from app.services.notification_service import NotificationService
 from app.services.ops_service import OpsService
 from app.services.payment_service import PaymentService
 from app.services.settings_service import SettingsService
+from app.services.support_service import SupportService
 from app.services.upload_service import UploadService
 from app.services.user_service import UserService
 
@@ -69,3 +70,6 @@ class Services:
 
     def ops(self) -> OpsService:
         return OpsService(self.session, self.c.clock, self.c.settings.outbox_max_attempts)
+
+    def support(self) -> SupportService:
+        return SupportService(self.session, self.c.clock)

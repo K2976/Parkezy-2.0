@@ -78,6 +78,15 @@ export default function SignIn() {
             Create an account
           </Text>
         </Row>
+        <Row style={{ justifyContent: 'center' }} gap={spacing.xs}>
+          <Text variant="muted">Trouble signing in?</Text>
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push('/support')}
+            style={{ fontFamily: fonts.bodyBold, color: colors.accent, paddingVertical: spacing.sm }}>
+            Contact support
+          </Text>
+        </Row>
       </Screen>
     </KeyboardAvoidingView>
   );

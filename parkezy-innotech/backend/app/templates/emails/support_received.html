@@ -1,0 +1,6 @@
+{% extends "_base.html" %}{% block content %}
+<p>Hi {{ name }},</p>
+<p>Thanks for contacting {{ app_name }} support. Your request <strong>#{{ reference }}</strong> (&ldquo;{{ subject }}&rdquo;) has reached our team, and we usually reply within 1 business day.</p>
+<p>If you need to add anything, reply to this email or send a new request from the app and mention #{{ reference }}.</p>
+<p>&mdash; The {{ app_name }} team</p>
+{% endblock %}

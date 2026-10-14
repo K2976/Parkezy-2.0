@@ -60,9 +60,10 @@ class UserService:
         await self._session.execute(delete(PushToken).where(PushToken.user_id == user.id, PushToken.token == token))
         await self._session.commit()
 
-    async def delete_account(self, user: User) -> None:
+    async def delete_account(self, user: User, password: str) -> None:
         """Anonymise personal data and close the account. Financial records (bookings,
         ledger) are kept for tax purposes but no longer identify the person."""
+        self._auth.confirm_password(user, password)
         live = list(BLOCKING_STATUSES)
         active = await self._session.scalar(
             select(func.count())

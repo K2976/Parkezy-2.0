@@ -126,10 +126,16 @@ async def test_account_deletion_policy_and_anonymisation(h: Harness):
     listing = await create_listing(h, host)
     driver = await register(h)
     b = (await book(h, driver, listing)).json()
-    r = await h.client.delete("/v1/me", headers=auth(driver["token"]))
+    delete = {"password": "parking123"}
+    r = await h.client.request("DELETE", "/v1/me", json=delete, headers=auth(driver["token"]))
     assert r.status_code == 409 and r.json()["error"]["code"] == "active_bookings"
     await h.client.post(f"/v1/bookings/{b['id']}/cancel", json={}, headers=auth(driver["token"]))
+    # Re-authentication: a valid session alone is not enough.
     r = await h.client.delete("/v1/me", headers=auth(driver["token"]))
+    assert r.status_code == 422
+    r = await h.client.request("DELETE", "/v1/me", json={"password": "wrong-pass"}, headers=auth(driver["token"]))
+    assert r.status_code == 403 and r.json()["error"]["code"] == "invalid_credentials"
+    r = await h.client.request("DELETE", "/v1/me", json=delete, headers=auth(driver["token"]))
     assert r.status_code == 200
     r = await h.client.get("/v1/me", headers=auth(driver["token"]))
     assert r.status_code == 401
