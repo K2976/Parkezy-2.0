@@ -118,7 +118,7 @@ class AuthService:
                     VerificationCode.purpose == purpose.value,
                     VerificationCode.consumed_at.is_(None),
                 )
-                .order_by(VerificationCode.created_at.desc())
+                .order_by(VerificationCode.created_at.desc(), VerificationCode.id.desc())
                 .limit(1)
                 .with_for_update()
             )

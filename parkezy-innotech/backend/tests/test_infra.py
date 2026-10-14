@@ -80,3 +80,38 @@ async def test_cache_degrades_gracefully_when_redis_down():
     limiter = RateLimiter(broken)
     await limiter.hit("b", "id", 1, 60)  # fails open
     await broken.aclose()
+
+
+def test_provider_database_urls_are_normalized_for_asyncpg():
+    neon = "postgresql://u:p@ep-x-pooler.c-7.us-east-2.aws.neon.tech/db?sslmode=require&channel_binding=require"
+    settings = make_settings(database_url=neon)
+    assert settings.database_url == "postgresql+asyncpg://u:p@ep-x-pooler.c-7.us-east-2.aws.neon.tech/db?ssl=require"
+    assert settings.pgbouncer_for(settings.database_url)
+    assert not settings.pgbouncer_for("postgresql+asyncpg://u:p@ep-x.c-7.us-east-2.aws.neon.tech/db")
+    assert not make_settings(database_url=neon, db_pgbouncer=False).pgbouncer_for(neon)
+
+
+def test_pgbouncer_connections_disable_statement_caching():
+    from app.db.session import connect_args
+
+    pooled = "postgresql+asyncpg://u:p@ep-x-pooler.neon.tech/db"
+    args = connect_args(make_settings(database_url=pooled), pooled)
+    assert args["statement_cache_size"] == 0 and args["prepared_statement_cache_size"] == 0
+    assert args["prepared_statement_name_func"]() != args["prepared_statement_name_func"]()
+    assert "statement_cache_size" not in connect_args(make_settings(), make_settings().database_url)
+
+
+def test_production_rejects_wildcard_cors():
+    import pytest
+    from pydantic import ValidationError
+
+    secret = "x" * 40
+    with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+        make_settings(
+            app_env="production",
+            jwt_secret=secret,
+            access_code_secret=secret,
+            email_provider="smtp",
+            smtp_host="localhost",
+            cors_origins="*",
+        )

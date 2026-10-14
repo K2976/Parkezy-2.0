@@ -15,6 +15,8 @@ def verify_svix_signature(
     tolerance_seconds: int = 300,
 ) -> bool:
     """Resend signs webhooks with Svix: base64(HMAC-SHA256(secret, f"{id}.{ts}.{body}"))."""
+    if not secret.removeprefix("whsec_"):
+        return False  # an empty key is public knowledge; never accept signatures made with it
     try:
         sent_at = int(timestamp)
     except (TypeError, ValueError):
