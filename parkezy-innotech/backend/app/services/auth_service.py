@@ -22,8 +22,9 @@ from app.core.security import (
     random_digits,
     sha256_hex,
 )
-from app.db.models import RefreshToken, User, VerificationCode
+from app.db.models import RefreshToken, SocialIdentity, User, VerificationCode
 from app.domain.enums import CodePurpose, UserStatus
+from app.integrations.identity import IdentityVerifier
 from app.services.outbox import Event, Outbox
 
 ACCESS_PURPOSE = "access"
@@ -56,7 +57,8 @@ class AuthService:
     # ---------------------------------------------------------------- tokens
     def _access_token(self, user: User, now: datetime) -> tuple[str, datetime]:
         ttl = timedelta(minutes=self._settings.access_token_ttl_minutes)
-        return self._tokens.encode(str(user.id), ACCESS_PURPOSE, now, ttl), now + ttl
+        token = self._tokens.encode(str(user.id), ACCESS_PURPOSE, now, ttl, tv=user.token_version)
+        return token, now + ttl
 
     def _new_refresh(self, user_id: uuid.UUID, family_id: uuid.UUID, now: datetime, ua: str | None):
         raw = new_opaque_token()
@@ -81,8 +83,12 @@ class AuthService:
         return TokenPair(access, access_exp, refresh, refresh_exp)
 
     def user_id_from_access_token(self, token: str) -> uuid.UUID:
+        return self.access_claims(token)[0]
+
+    def access_claims(self, token: str) -> tuple[uuid.UUID, int]:
+        """(user id, token version). A version older than the user's current one was revoked."""
         payload = self._tokens.decode(token, ACCESS_PURPOSE)
-        return uuid.UUID(payload["sub"])
+        return uuid.UUID(payload["sub"]), int(payload.get("tv", 0))
 
     # ---------------------------------------------------------------- codes
     def _issue_code(self, user: User, purpose: CodePurpose) -> None:
@@ -138,7 +144,7 @@ class AuthService:
     async def register(self, *, email: str, password: str, full_name: str, phone: str | None) -> User:
         user = User(
             email=email.lower(),
-            password_hash=self._hasher.hash(password),
+            password_hash=await self._hasher.hash_async(password),
             full_name=full_name.strip(),
             phone=phone,
             status=UserStatus.ACTIVE.value,
@@ -163,12 +169,22 @@ class AuthService:
             )
         ).scalar_one_or_none()
 
+    async def _release_connection_before_hashing(self) -> None:
+        """End the read-only transaction so its pooled connection goes back to the pool while this
+        request waits for (and spends ~70 ms on) a password hash. Holding it would let a burst of
+        sign-ins drain the pool for everyone. Only done when nothing is waiting to be written, so no
+        half-finished change is ever committed early."""
+        s = self._session
+        if s.in_transaction() and not (s.new or s.dirty or s.deleted):
+            await s.commit()
+
     async def login(self, *, email: str, password: str, user_agent: str | None) -> tuple[User, TokenPair]:
         user = await self._active_user_by_email(email)
-        if user is None or not user.password_hash or not self._hasher.verify(user.password_hash, password):
+        await self._release_connection_before_hashing()
+        if user is None or not user.password_hash or not await self._hasher.verify_async(user.password_hash, password):
             raise Unauthorized("Incorrect email or password", code="invalid_credentials")
         if self._hasher.needs_rehash(user.password_hash):
-            user.password_hash = self._hasher.hash(password)
+            user.password_hash = await self._hasher.hash_async(password)
         return user, await self._issue(user, user_agent)
 
     async def issue_for(self, user: User, user_agent: str | None) -> TokenPair:
@@ -212,10 +228,18 @@ class AuthService:
             await self._session.commit()
 
     async def revoke_all_sessions(self, user_id: uuid.UUID) -> None:
+        """Sign the user out everywhere: refresh tokens are revoked and access tokens already
+        issued stop working immediately (their token version no longer matches)."""
         await self._session.execute(
             update(RefreshToken)
             .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
             .values(revoked_at=self._clock.now())
+        )
+        await self._session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(token_version=User.token_version + 1)
+            .execution_options(synchronize_session="fetch")
         )
 
     async def verify_email(self, user: User, code: str) -> User:
@@ -241,25 +265,125 @@ class AuthService:
         await self._session.commit()
 
     async def reset_password(self, *, email: str, code: str, new_password: str) -> None:
+        # Hash first, before touching the database, so no connection or row lock is held while hashing.
+        new_hash = await self._hasher.hash_async(new_password)
         user = await self._active_user_by_email(email)
         if user is None:
             raise ValidationFailed("Invalid or expired code", code="invalid_code")
         await self._consume_code(user, CodePurpose.PASSWORD_RESET, code)
-        user.password_hash = self._hasher.hash(new_password)
+        user.password_hash = new_hash
         # A successful reset proves inbox ownership.
         user.email_verified_at = user.email_verified_at or self._clock.now()
         await self.revoke_all_sessions(user.id)
         self._outbox.add(Event.PASSWORD_CHANGED, {"user_id": str(user.id)})
         await self._session.commit()
 
-    def confirm_password(self, user: User, password: str) -> None:
+    # ---------------------------------------------------------------- social sign-in
+    async def social_sign_in(
+        self,
+        verifier: IdentityVerifier | None,
+        *,
+        provider: str,
+        id_token: str,
+        nonce: str | None,
+        full_name: str | None,
+        user_agent: str | None,
+    ) -> tuple[User, TokenPair, bool]:
+        """Returns (user, tokens, created). Lookup order: the provider's stable subject id, then a
+        verified email match (links the identity to the existing account), else a new account."""
+        if verifier is None:
+            raise Unauthorized("Social sign-in is not available", code="provider_not_configured")
+        identity = await verifier.verify(provider=provider, id_token=id_token, nonce=nonce)
+        # Two first sign-ins racing each other: the loser hits a unique constraint and retries,
+        # by which time the winner's account exists and is found by subject.
+        for attempt in range(3):
+            try:
+                user, created = await self._resolve_social(provider, identity, full_name)
+                break
+            except IntegrityError:
+                await self._session.rollback()
+                if attempt == 2:
+                    raise
+        return user, await self._issue(user, user_agent), created
+
+    async def _resolve_social(self, provider: str, identity, full_name: str | None) -> tuple[User, bool]:
+        now = self._clock.now()
+        linked = (
+            await self._session.execute(
+                select(User)
+                .join(SocialIdentity, SocialIdentity.user_id == User.id)
+                .where(SocialIdentity.provider == provider, SocialIdentity.subject == identity.subject)
+            )
+        ).scalar_one_or_none()
+        if linked is not None:
+            if linked.status != UserStatus.ACTIVE.value:
+                raise Unauthorized("Account unavailable", code="account_inactive")
+            return linked, False
+
+        if not identity.email:
+            raise ValidationFailed(
+                "We need your email address to create the account. Remove the app in your Apple ID "
+                "settings and sign in again, sharing your email.",
+                code="email_required",
+            )
+        if not identity.email_verified:
+            raise Forbidden("Your email address isn't verified with this provider", code="provider_email_unverified")
+        email = identity.email.lower()
+
+        existing = (
+            await self._session.execute(select(User).where(User.email == email).with_for_update())
+        ).scalar_one_or_none()
+        if existing is not None:
+            if existing.status != UserStatus.ACTIVE.value:
+                raise Unauthorized("Account unavailable", code="account_inactive")
+            if existing.email_verified_at is None:
+                # Nobody ever proved they own this inbox, so the password may belong to someone who
+                # registered the address first. The provider just proved ownership: lock them out.
+                existing.password_hash = None
+                existing.email_verified_at = now
+                await self.revoke_all_sessions(existing.id)
+            self._session.add(
+                SocialIdentity(
+                    user_id=existing.id, provider=provider, subject=identity.subject, email=email, created_at=now
+                )
+            )
+            await self._session.flush()
+            return existing, False
+
+        name = (full_name or identity.full_name or "").strip() or email.split("@")[0]
+        user = User(
+            email=email,
+            password_hash=None,
+            full_name=name[:120],
+            phone=None,
+            email_verified_at=now,
+            status=UserStatus.ACTIVE.value,
+            is_host=False,
+            is_commercial_host=False,
+            is_admin=email in self._settings.admin_emails,
+        )
+        self._session.add(user)
+        await self._session.flush()
+        self._session.add(
+            SocialIdentity(user_id=user.id, provider=provider, subject=identity.subject, email=email, created_at=now)
+        )
+        await self._session.flush()
+        return user, True
+
+    async def confirm_password(self, user: User, password: str) -> None:
         """Re-authentication for sensitive actions: a stolen unlocked phone is not enough."""
-        if not user.password_hash or not self._hasher.verify(user.password_hash, password):
+        await self._release_connection_before_hashing()
+        if not user.password_hash or not await self._hasher.verify_async(user.password_hash, password):
             raise Forbidden("Current password is incorrect", code="invalid_credentials")
 
     async def change_password(self, user: User, *, current_password: str, new_password: str) -> None:
-        self.confirm_password(user, current_password)
-        user.password_hash = self._hasher.hash(new_password)
+        if not user.password_hash:
+            raise Conflict(
+                "This account signs in with Google or Apple and has no password. Use 'Forgot password' to set one.",
+                code="no_password",
+            )
+        await self.confirm_password(user, current_password)
+        user.password_hash = await self._hasher.hash_async(new_password)
         await self.revoke_all_sessions(user.id)
         self._outbox.add(Event.PASSWORD_CHANGED, {"user_id": str(user.id)})
         await self._session.commit()

@@ -4,15 +4,20 @@ Shared by the API (app/api/deps.py) and the workers so wiring lives in one place
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.container import Container
+from app.services.admin_user_service import AdminUserService
 from app.services.auth_service import AuthService
 from app.services.booking_service import BookingService
 from app.services.dispute_service import DisputeService
 from app.services.email_service import EmailService
+from app.services.favorite_service import FavoriteService
 from app.services.host_service import HostDashboardService
 from app.services.listing_service import ListingService
 from app.services.notification_service import NotificationService
 from app.services.ops_service import OpsService
 from app.services.payment_service import PaymentService
+from app.services.payout_service import PayoutService
+from app.services.receipt_service import ReceiptService
+from app.services.review_service import ReviewService
 from app.services.settings_service import SettingsService
 from app.services.support_service import SupportService
 from app.services.upload_service import UploadService
@@ -66,10 +71,25 @@ class Services:
         return DisputeService(self.session, self.c.clock, self.uploads())
 
     def host_dashboard(self) -> HostDashboardService:
-        return HostDashboardService(self.session, self.c.clock)
+        return HostDashboardService(self.session, self.c.clock, self.c.settings.default_timezone)
 
     def ops(self) -> OpsService:
         return OpsService(self.session, self.c.clock, self.c.settings.outbox_max_attempts)
 
     def support(self) -> SupportService:
         return SupportService(self.session, self.c.clock)
+
+    def reviews(self) -> ReviewService:
+        return ReviewService(self.session, self.c.clock, self.c.cache)
+
+    def favorites(self) -> FavoriteService:
+        return FavoriteService(self.session, self.c.clock)
+
+    def payouts(self) -> PayoutService:
+        return PayoutService(self.session, self.c.clock)
+
+    def receipts(self) -> ReceiptService:
+        return ReceiptService(self.session, self.c.clock, self.bookings(), self.c.settings.default_timezone)
+
+    def admin_users(self) -> AdminUserService:
+        return AdminUserService(self.session, self.c.clock, self.auth(), self.c.cache)

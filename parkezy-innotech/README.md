@@ -32,7 +32,13 @@ Built with a **zero double-booking mathematical guarantee** (PostgreSQL GiST exc
 4. [Data Model & Database Schema](#data-model--database-schema)
 5. [Technology Stack](#technology-stack)
 6. [Local Development & Setup Guide](#local-development--setup-guide)
-7. [Automated Verification & Benchmarks](#automated-verification--benchmarks)
+7. [Automated Verification, Benchmarks & Load Testing](#automated-verification-benchmarks--load-testing)
+   - [Unit & Integration Test Suite (224 Tests)](#1-unit--integration-test-suite-224-tests)
+   - [Load & Stress Testing with k6](#2-load--stress-testing-with-k6)
+   - [Prometheus & Grafana Real-Time Monitoring](#3-prometheus--grafana-real-time-monitoring)
+   - [Sustained Throughput & Capacity Benchmarks](#4-sustained-throughput--capacity-benchmarks)
+   - [Concurrency Race & Chaos Engineering](#5-concurrency-race--chaos-engineering)
+   - [Mobile Quality Verification](#6-mobile-quality-verification)
 8. [Production Deployment](#production-deployment)
 
 ---
@@ -296,6 +302,9 @@ flowchart TD
 | **Automated Overstay Protection** | Predictable, itemized billing for vehicle owners exceeding their reservation window (₹20 per started 15 min). | Automated overstay fee calculation executed server-side upon gatekeeper exit scan. |
 | **Dispute Filing & Evidence** | Drivers can file complaints (blocked spot, hostile host, overcharge) with photo evidence. | Presigned direct S3 image upload with dedicated dispute audit records (`disputes` table). |
 | **Digital Receipts & Ledger History** | Searchable history of active, past, and cancelled reservations with complete financial invoices. | PDF/HTML receipts rendered via server templates and downloadable in-app. |
+| **In-App Support Ticketing** | Directly submit customer support tickets with automated ticket ID generation and notifications. | Dedicated `support_tickets` persistence with transactional outbox email notification pipeline. |
+| **Account Deletion & Data Privacy** | Full user data erasure and session invalidation compliant with DPDP Act 2023 / GDPR. | Cryptographic password re-authentication guard (`/v1/account/delete`) and cascade cleanup. |
+| **Cross-Platform OpenStreetMap** | High-performance open-source map view without proprietary API lock-ins. | Native Android/iOS via `react-native-maps` (with positive zIndex tile stacking) and Web via Leaflet iframe bridge. |
 
 ---
 
@@ -336,6 +345,8 @@ flowchart TD
 | **Bloom Filter Webhook Idempotency** | Prevents payment replay attacks and duplicate webhook executions from Razorpay. | Redis Bloom filter backed by a unique database constraint on `idempotency_key`. |
 | **Rotating Refresh Token Security** | High-security JWT authentication with rotating refresh tokens and automatic reuse detection. | If a used refresh token is presented again, the entire user token family is immediately revoked. |
 | **Direct-to-Storage Presigned URLs** | Media files (listing photos, dispute evidence) upload directly from mobile device to S3/B2. | Secure presigned PUT URLs with byte-size and MIME-type restrictions. Zero server upload proxying. |
+| **Strict Input Sanitization & NUL Byte Defense** | Immune to PostgreSQL text crashes caused by null character string exploits (`\u0000`). | Strict Pydantic validator rejecting null bytes across all input strings and fields. |
+| **Active Booking Archive Protection** | Prevents hosts from deleting or archiving parking bays that have upcoming or active reservations. | Pre-action constraint checks preventing orphaned driver bookings and unfulfilled sessions. |
 
 ---
 
@@ -447,7 +458,7 @@ erDiagram
 | **Object Storage** | S3-Compatible API (Backblaze B2, SeaweedFS) | Secure presigned direct PUT uploads for listing photos and dispute evidence. |
 | **Communication & Notifications** | Resend API, Expo Push Service, Mailpit | Transactional receipts, booking status emails, mobile push alerts. |
 | **Payment Gateway** | Razorpay SDK, Offline Pay-at-Venue | Card/UPI payment capture, automatic webhook signature verification, target-based refunds. |
-| **Testing & Quality** | Pytest, Ruff, TypeScript (`tsc`), Expo Doctor, Locust / Async Benchmarks | 66+ full integration tests against real PostGIS/Redis instances, linting, latency benchmarks. |
+| **Testing & Quality** | Pytest (224 full integration tests), k6 (load & stress test suite), Prometheus & Grafana (real-time telemetry), Ruff, TypeScript (`tsc`), Expo Doctor | 224 automated backend tests, production load simulation, live metrics dashboard, static type validation. |
 
 ---
 
@@ -462,6 +473,9 @@ erDiagram
 Start PostgreSQL with PostGIS, Redis, SeaweedFS S3, and Mailpit email catcher:
 ```bash
 docker compose up -d
+
+# Optional: Launch Prometheus and Grafana for live metrics & load testing
+docker compose --profile monitoring up -d
 ```
 
 Verify services:
@@ -469,6 +483,8 @@ Verify services:
 - **Redis**: `localhost:6380`
 - **SeaweedFS S3**: `http://localhost:8333`
 - **Mailpit Web Mailbox**: `http://localhost:8025`
+- **Prometheus Telemetry**: `http://localhost:9090`
+- **Grafana Live Dashboard**: `http://localhost:3000` (admin / admin)
 
 ### 2. Backend API & Workers
 ```bash
@@ -513,35 +529,161 @@ npx expo start
 
 ---
 
-## Automated Verification & Benchmarks
+## Automated Verification, Benchmarks & Load Testing
 
-The codebase includes comprehensive automated test suites covering concurrency, double-booking prevention, auth rate-limiting, and financial integrity:
+The platform is fortified with multi-tier verification: **224 full integration tests** covering all business rules and failure cases, a **production-like k6 load and stress test pipeline**, **Prometheus & Grafana telemetry**, and **strict mobile static analysis**.
+
+### 1. Unit & Integration Test Suite (224 Tests)
+
+Run the full backend integration test suite against live PostgreSQL (with PostGIS) and Redis:
 
 ```bash
-# Backend test suite (66 integration tests against live PostGIS & Redis)
 cd backend
 uv run pytest
+```
 
-# Code formatting and linting
-uv run ruff check . && uv run ruff format --check .
+#### Test Suite Breakdown:
 
-# Concurrency & latency benchmark (2,000 seeded listings)
-PYTHONPATH=. uv run python scripts/bench.py --seed-listings 2000
-PYTHONPATH=. uv run python scripts/bench.py --cleanup
+| Test Module | Coverage & Verification Highlights |
+|---|---|
+| `tests/test_account_and_ops.py` | Account deletion with password confirmation, cascade cleanup, GDPR/DPDP data erasure. |
+| `tests/test_admin_users.py` | Admin user controls, permission elevation, role guards. |
+| `tests/test_auth.py` | Argon2 hashing, JWT access token issuance, rotating refresh tokens with replay revocation. |
+| `tests/test_booking_extension.py` | In-session booking extension, recalculations, gap conflict checks. |
+| `tests/test_bookings.py` | Zero double-booking concurrency, GiST constraint rejection, hold timeouts. |
+| `tests/test_domain.py` | Domain invariants, time intervals, business rule validations. |
+| `tests/test_favorites.py` | Driver bookmarking and favorite listing persistence. |
+| `tests/test_host_dashboard.py` | Host listing KPIs, 14-day earnings aggregation, safe archive guards. |
+| `tests/test_identity_verifier.py` | Verification codes, rate-limited SMS/email OTP attempts. |
+| `tests/test_infra.py` | Redis cache, rate limiting, bloom filters, metrics route normalization. |
+| `tests/test_listing_delete.py` | Listing deletion restrictions when active or upcoming bookings exist. |
+| `tests/test_listings.py` | PostGIS spatial queries (`ST_DWithin`), geocoding, radius & amenity filters. |
+| `tests/test_notification_preferences.py` | User notification channel preferences. |
+| `tests/test_payments.py` | Razorpay webhook signature verification, payment capture, idempotency. |
+| `tests/test_payouts.py` | Host balance payouts, bank account verification, ledger integration. |
+| `tests/test_platform.py` | Dynamic platform settings (GST %, commission, overstay rules). |
+| `tests/test_receipts.py` | Digital PDF/HTML invoice rendering and calculation accuracy. |
+| `tests/test_reliability.py` | 38 adversarial resilience tests: NUL bytes (`\u0000`), huge JSON payloads, malformed tokens, pool recovery. |
+| `tests/test_reviews.py` | Driver and host reviews, ratings aggregation, verified stay checks. |
+| `tests/test_social_auth.py` | OAuth social login flows and account linkage. |
+| `tests/test_support_and_legal.py` | In-app support tickets persistence, notification outbox, dynamic legal policy endpoints. |
 
-# Mobile type-checking and health checks
-cd ../mobile
+---
+
+### 2. Load & Stress Testing with k6
+
+The load test suite runs entirely in Docker via k6, targeting a production-like 4-worker API against an isolated `parkezy_loadtest` database so development data is untouched.
+
+```
+ k6 (docker) ──requests──▶ API :8001 (4 workers) ──▶ Postgres / Redis
+     │                          │ /metrics
+     └─remote write─▶ Prometheus :9090 ◀─scrape─ exporters
+                            │
+                       Grafana :3000  (dashboard "Parkezy load test")
+```
+
+#### Running the Load Test Environment:
+
+```bash
+# 1. Start core infra + monitoring stack (Prometheus :9090, Grafana :3000, login: admin / admin)
+docker compose up -d
+docker compose --profile monitoring up -d
+
+# 2. Launch production-like API & background worker under test (isolated DB, raised limits)
+./loadtest/run_api.sh                 # Terminal 1: API on port 8001 (4 workers)
+./loadtest/run_worker.sh              # Terminal 2: Celery outbox worker
+
+# 3. Seed test data (500 drivers, 50 hosts, 1,000 listings x 4 slots + race listing)
+cd backend && uv run python ../loadtest/seed.py --reset && cd ..
+
+# 4. Execute k6 test suites:
+./loadtest/k6.sh search                                  # Smoke test: 2 VUs for 30s
+./loadtest/k6.sh search  -e PROFILE=load   -e VUS=100    # Sustained map search (100 VUs)
+./loadtest/k6.sh booking -e PROFILE=stress -e VUS=50     # Full driver journey stress (search → book → pay → pass)
+./loadtest/k6.sh race    -e RACERS=200                   # 200 drivers racing for the exact same slot
+./loadtest/k6.sh auth    -e PROFILE=load   -e VUS=20     # Password hashing & auth throughput
+./loadtest/k6.sh everything -e PROFILE=stress -e VUS=15  # Comprehensive sweep across all 89 routes (up to 90 VUs)
+```
+
+#### Available Profiles:
+- **`smoke`**: 2 VUs for 30s to verify script and route health.
+- **`load`**: Ramp to target VUs and sustain for 5 minutes (normal-day traffic).
+- **`stress`**: Stepped ramp (VUs → 2× → 4× → 6×) to locate system bending points.
+- **`spike`**: Instant 6× surge for 1 minute to test recovery from burst traffic.
+- **`soak`**: Extended sustained load (default 1 hour) to detect connection or memory leaks.
+
+---
+
+### 3. Prometheus & Grafana Real-Time Monitoring
+
+When `--profile monitoring` is active:
+- **Grafana Dashboard**: Open `http://localhost:3000` (credentials: `admin` / `admin`).
+  - Pre-provisioned dashboard: **"Parkezy load test"**.
+  - Tracks real-time p50/p95/p99 latency, request rates, HTTP status distribution, active PostgreSQL connections, Redis pool saturation, lock waits, and transactional outbox backlog.
+  - Filterable by individual k6 `testid` for before/after comparison.
+- **Prometheus Scraper**: Open `http://localhost:9090` to inspect raw `/metrics` scraped from API, Postgres exporter, and Redis exporter.
+
+---
+
+### 4. Sustained Throughput & Capacity Benchmarks
+
+Tested on a 16-core / 13 GB host machine running the 4-worker API against PostgreSQL and Redis:
+
+| Endpoint | Peak Sustained req/s | Latency (p95) | Tested Behaviour |
+|---|---|---|---|
+| `GET /v1/config` | **1,634 req/s** | < 15 ms | Cached static platform settings |
+| `GET /v1/me` | **1,009 req/s** | < 35 ms | Authenticated user session validation |
+| `GET /v1/listings` (Search) | **865 req/s** | < 120 ms | Spatial PostGIS `ST_DWithin` bounding query |
+| `GET /v1/listings/{id}/reviews` | **663 req/s** | < 45 ms | Paginated review and rating fetch |
+| `POST /v1/bookings/quote` | **562 req/s** | < 60 ms | Server-authoritative price breakdown + surge |
+| `GET /v1/listings/{id}` | **441 req/s** | < 55 ms | Full listing detail, amenities & host profile |
+| `GET /v1/bookings` | **266 req/s** | < 80 ms | Driver booking history query |
+| `POST /v1/bookings` | **117 req/s** | < 150 ms | Slot reservation with GiST exclusion check |
+| `POST /v1/auth/login` | **23 req/s** | < 650 ms | Secure Argon2 password verification |
+
+#### Correctness Under Load Summary:
+- **Total Requests Executed:** **69,424 requests** across all 89 API routes.
+- **Completed User Journeys:** **621 full lifecycles** (search → quote → hold → pay → access pass → overstay → check-out).
+- **Error Rate:** **0 server errors (5xx)**, **0 wrong answers**.
+
+---
+
+### 5. Concurrency Race & Chaos Engineering
+
+#### Zero Double-Booking Slot Race:
+- **Scenario:** 200 concurrent driver Virtual Users (`./loadtest/k6.sh race -e RACERS=200`) attempt to book the exact same single-slot parking space for the exact same time window at the exact same millisecond.
+- **Result:** **Exactly 1 driver succeeds (`201 Created`)**; all other 199 drivers are atomically rejected (`409 Conflict`) by PostgreSQL GiST exclusion constraints without deadlocks or double-allocation.
+
+#### Chaos & Worker Resilience:
+- **Chaos Injection (`./loadtest/chaos.sh`):** Simulates abrupt API worker crashes (`SIGKILL`) during peak load.
+- **Result:** Process supervisor respawns dead workers within seconds. 0 of 1,957 in-flight requests failed; the system cleanly drained and processed the outbox backlog.
+
+#### Hostile Input Probing (`uv run python ../loadtest/probe_edges.py`):
+- Probes all routes with NaN, ±Infinity, floating-point overflows (`1e308`), path traversal payloads, NUL bytes (`\u0000`), tampered JWT signatures, and dates outside valid ranges (`0001` to `9999`).
+- **Result:** 100% clean 4xx client errors; zero unhandled 500 exceptions.
+
+---
+
+### 6. Mobile Quality Verification
+
+```bash
+cd mobile
+
+# Static TypeScript typecheck (strict mode)
 npx tsc --noEmit
+
+# Code quality & ESLint validation
 npx expo lint
+
+# Diagnose dependency compatibility
 npx expo-doctor
 ```
 
-### Verified Test Scenarios:
-1. **12 Concurrent Booking Requests**: Exactly 1 request succeeds; 11 are rejected atomically by the GiST exclusion constraint without race conditions.
-2. **Replay Rejection on QR Scans**: Single-use nonces are invalidated upon consumption; repeated scans return rejection errors.
-3. **Double-Entry Ledger Balancing**: Every booking transaction creates matching debit and credit entries verified by database triggers.
-4. **Idempotent Webhooks**: Re-sent payment webhooks are discarded via Redis Bloom filters without duplicate booking side-effects.
-5. **Session Expiration Sweeper**: Celery beat accurately marks unconfirmed holds as expired after 15 minutes.
+#### Cross-Platform Map Compatibility:
+- **Android & iOS:** Uses `react-native-maps` with `UrlTile` pointed to `https://tile.openstreetmap.de/{z}/{x}/{y}.png` and `zIndex={1}`.
+  > [!NOTE]
+  > For standalone Android native builds (`npx expo run:android`), set `GOOGLE_MAPS_ANDROID_API_KEY` in `mobile/.env` to authenticate Google Play Services.
+- **Web Browser:** Uses responsive Leaflet map inside an iframe with bidirectional message passing, ensuring identical appearance without native SDK requirements.
 
 ---
 

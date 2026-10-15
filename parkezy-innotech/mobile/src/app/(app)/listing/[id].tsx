@@ -48,6 +48,8 @@ export default function ListingDetail() {
   const [slotId, setSlotId] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
+  // The window is wider than the content area on web (scrollbar, side chrome), so size the gallery from its own layout.
+  const [galleryWidth, setGalleryWidth] = useState(width);
   // One key per booking attempt: retries after a network error never double-book.
   const idempotencyKey = useRef(uuidV4());
 
@@ -97,9 +99,11 @@ export default function ListingDetail() {
                 { id: 'fb2', url: 'https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1200&q=80' },
                 { id: 'fb3', url: 'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&w=1200&q=80' },
               ];
-          const cardWidth = width - spacing.lg * 2;
+          const cardWidth = galleryWidth - spacing.lg * 2;
           return (
-            <View style={{ marginHorizontal: -spacing.lg, marginBottom: spacing.md }}>
+            <View
+              style={{ marginHorizontal: -spacing.lg, marginBottom: spacing.md }}
+              onLayout={(e) => setGalleryWidth(e.nativeEvent.layout.width)}>
               <ScrollView
                 horizontal
                 pagingEnabled

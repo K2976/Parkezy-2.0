@@ -18,6 +18,21 @@ SECURITY_HEADERS = [
 ]
 
 
+def route_template(scope: Scope) -> str:
+    """Full route template for metrics, e.g. /v1/bookings/{booking_id}.
+
+    FastAPI includes routers lazily, so the matched route only knows its own path ("/bookings/...")
+    without the "/v1" prefix it was mounted under. Prefixes are static, so put back the leading
+    segments of the real path that the template doesn't cover."""
+    template = getattr(scope.get("route"), "path", None)
+    if not template:
+        return "unmatched"
+    real = scope["path"].strip("/").split("/")
+    tail = template.strip("/").split("/")
+    prefix = real[: max(0, len(real) - len(tail))]
+    return "/" + "/".join(prefix + tail) if prefix else template
+
+
 class RequestContextMiddleware:
     """Adds X-Request-ID and Server-Timing headers and logs one line per request."""
 
@@ -51,7 +66,7 @@ class RequestContextMiddleware:
         finally:
             elapsed_s = time.perf_counter() - started
             # Label by route template (/v1/bookings/{booking_id}), never the raw path, to bound cardinality.
-            route = getattr(scope.get("route"), "path", None) or "unmatched"
+            route = route_template(scope)
             metrics.observe(scope["method"], route, status, elapsed_s)
             log.info(
                 "request",

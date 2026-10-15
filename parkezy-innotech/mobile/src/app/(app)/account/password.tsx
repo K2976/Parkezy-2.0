@@ -1,11 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
 import { ApiError, errorMessage } from '@/api/client';
 import { authApi } from '@/api/endpoints';
 import { useAuth } from '@/auth/AuthProvider';
 import { Banner, Button, Screen, TextField } from '@/ui/components';
+import { notify } from '@/ui/dialogs';
 
 export default function ChangePassword() {
   const { signOut } = useAuth();
@@ -14,7 +14,7 @@ export default function ChangePassword() {
   const change = useMutation({
     mutationFn: () => authApi.changePassword({ current_password: current, new_password: next }),
     // The server ends every session after a password change.
-    onSuccess: () => Alert.alert('Password updated', 'Please sign in again.', [{ text: 'OK', onPress: () => signOut() }]),
+    onSuccess: () => notify('Password updated', 'Please sign in again.', () => signOut()),
   });
   const fieldErrors = change.error instanceof ApiError ? change.error.fieldErrors : {};
   return (

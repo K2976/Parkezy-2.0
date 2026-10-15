@@ -1,6 +1,7 @@
 import { createElement, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { env } from '@/config/env';
 import type { MapRegion } from '@/ui/ParkingMap';
 import { useTheme } from '@/ui/theme';
 
@@ -53,7 +54,7 @@ export function PinPickerMap({
   <script>
     var map = L.map('map', { zoomControl: false }).setView([${lat}, ${lng}], 15);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('${env.osmTileUrl}', {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);

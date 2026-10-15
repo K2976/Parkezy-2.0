@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.deps import ContainerDep, CurrentUser, RateLimit, ServicesDep
 from app.api.presenters import user_out
@@ -13,6 +13,7 @@ from app.schemas.users import (
     RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    SocialSignInRequest,
     TokenOut,
     UserOut,
 )
@@ -55,6 +56,24 @@ async def login(body: LoginRequest, request: Request, services: ServicesDep, c: 
     user, pair = await services.auth().login(
         email=body.email, password=body.password, user_agent=request.headers.get("user-agent")
     )
+    return AuthOut(user=user_out(user), tokens=_tokens(pair))
+
+
+@router.post("/social", response_model=AuthOut, status_code=status.HTTP_201_CREATED, dependencies=[auth_limit])
+async def social_sign_in(
+    body: SocialSignInRequest, request: Request, response: Response, services: ServicesDep, c: ContainerDep
+) -> AuthOut:
+    """Sign in with Google or Apple. 201 when a new account was created, 200 otherwise."""
+    user, pair, created = await services.auth().social_sign_in(
+        c.identity_verifier,
+        provider=body.provider.value,
+        id_token=body.id_token,
+        nonce=body.nonce,
+        full_name=body.full_name,
+        user_agent=request.headers.get("user-agent"),
+    )
+    if not created:
+        response.status_code = status.HTTP_200_OK
     return AuthOut(user=user_out(user), tokens=_tokens(pair))
 
 

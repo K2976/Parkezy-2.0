@@ -148,8 +148,9 @@ class HostDashboardOut(Schema):
     earnings_total: Decimal
     earnings_period: Decimal
     period_days: int
-    daily_earnings: list[DailyEarning]
+    daily_earnings: list[DailyEarning]  # `day` is a calendar date in `timezone`
     currency: str
+    timezone: str
 
 
 class OutboxEventOut(Schema):

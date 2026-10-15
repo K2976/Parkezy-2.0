@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 
 import { ApiError, errorMessage } from '@/api/client';
 import { hostApi } from '@/api/endpoints';
@@ -25,6 +25,7 @@ import {
   Toggle,
 } from '@/ui/components';
 import { draftFrom, draftToInput, type ListingDraft, ListingFields, validateDraft } from '@/ui/ListingForm';
+import { confirmAction } from '@/ui/dialogs';
 import { PhotoPicker, type UploadedPhoto } from '@/ui/PhotoPicker';
 import { fonts, radius, spacing, useTheme } from '@/ui/theme';
 import { money, titleCase } from '@/utils/format';
@@ -91,11 +92,7 @@ export default function ManageListing() {
   const cfg = config.data;
   const anyError = [save, setStatus, addSlot, toggleSlot, removeSlot, removePhoto, attachPhotos].find((m) => m.error)?.error;
 
-  const confirm = (title: string, body: string, action: () => void) =>
-    Alert.alert(title, body, [
-      { text: 'Keep', style: 'cancel' },
-      { text: title, style: 'destructive', onPress: action },
-    ]);
+  const confirm = (title: string, body: string, action: () => void) => confirmAction(title, body, action);
 
   return (
     <Screen refreshing={listing.isRefetching} onRefresh={() => listing.refetch()}>
@@ -122,7 +119,14 @@ export default function ManageListing() {
             title="Archive"
             kind="danger"
             style={{ flex: 1 }}
-            onPress={() => confirm('Archive', 'Drivers will no longer see this spot. Existing bookings still go ahead.', () => setStatus.mutate('archived'))}
+            onPress={() =>
+              confirm(
+                'Archive',
+                'Drivers will no longer see or book this spot, and it leaves your list. Spots with upcoming or active bookings can\'t be archived until those bookings finish or are cancelled.',
+                // Archived spots are gone for good, so leave this screen once it's done.
+                () => setStatus.mutate('archived', { onSuccess: () => router.back() }),
+              )
+            }
           />
         ) : null}
       </Row>

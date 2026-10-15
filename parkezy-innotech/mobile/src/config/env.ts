@@ -26,4 +26,5 @@ export const env = {
   supportEmail: required('EXPO_PUBLIC_SUPPORT_EMAIL', process.env.EXPO_PUBLIC_SUPPORT_EMAIL),
   privacyUrl: required('EXPO_PUBLIC_PRIVACY_URL', process.env.EXPO_PUBLIC_PRIVACY_URL),
   termsUrl: required('EXPO_PUBLIC_TERMS_URL', process.env.EXPO_PUBLIC_TERMS_URL),
+  osmTileUrl: process.env.EXPO_PUBLIC_OSM_TILE_URL || 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
 } as const;

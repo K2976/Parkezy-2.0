@@ -246,8 +246,10 @@ export type HostDashboard = {
   earnings_total: Money;
   earnings_period: Money;
   period_days: number;
+  /** `day` values are calendar dates in `timezone` (the platform's, e.g. Asia/Kolkata). */
   daily_earnings: { day: string; amount: Money }[];
   currency: string;
+  timezone: string;
 };
 
 export type SlotInput = {

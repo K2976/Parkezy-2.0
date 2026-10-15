@@ -1,0 +1,5 @@
+Hi {{ name }},
+
+{{ detail }}
+
+You can see every payout in the app under Earnings.

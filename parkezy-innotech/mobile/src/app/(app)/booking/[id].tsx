@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { errorMessage } from '@/api/client';
@@ -31,6 +31,7 @@ import {
 import { fonts, radius, spacing, useTheme } from '@/ui/theme';
 import { dateTime, duration, money, shortDuration, time, titleCase } from '@/utils/format';
 import { minutesBetween } from '@/utils/time';
+import { confirmAction } from '@/ui/dialogs';
 
 const LIVE: Booking['status'][] = ['pending_approval', 'pending_payment', 'confirmed', 'checked_in'];
 
@@ -196,10 +197,10 @@ export default function BookingDetail() {
       isDriver && b.status === 'confirmed' && !freeCancel && Number(b.amount_paid) > 0 && config.data
         ? ` A late-cancellation fee of ${Math.round(Number(config.data.late_cancellation_fee_rate) * 100)}% of the parking price applies.`
         : '';
-    Alert.alert('Cancel booking?', `This can’t be undone.${fee}`, [
-      { text: 'Keep booking', style: 'cancel' },
-      { text: 'Cancel booking', style: 'destructive', onPress: () => cancel.mutate() },
-    ]);
+    confirmAction('Cancel booking?', `This can’t be undone.${fee}`, () => cancel.mutate(), {
+      confirmLabel: 'Cancel booking',
+      cancelLabel: 'Keep booking',
+    });
   };
 
   const openMaps = () => {

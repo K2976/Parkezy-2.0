@@ -139,6 +139,7 @@ class ListingOut(Schema):
     slots: list[SlotOut]
     media: list[MediaOut]
     access_instructions: str | None = None  # only for the owner / confirmed drivers
+    is_favorite: bool = False  # saved by the signed-in viewer
 
 
 class ListingSearchItem(Schema):
@@ -157,6 +158,7 @@ class ListingSearchItem(Schema):
     available_slots: int | None
     cover_photo_url: str | None
     rating_avg: Decimal | None
+    rating_count: int = 0
 
 
 class ListingSearchParams(Schema):
@@ -182,3 +184,20 @@ class ListingSearchParams(Schema):
         if self.only_available and self.starts_at is None:
             raise ValueError("only_available requires starts_at and ends_at")
         return self
+
+
+class FavoriteOut(Schema):
+    id: uuid.UUID
+    kind: ListingKind
+    title: str
+    address_line: str
+    city: str
+    latitude: float
+    longitude: float
+    hourly_rate: Decimal
+    currency: str
+    amenities: list[str]
+    rating_avg: Decimal | None
+    rating_count: int
+    cover_photo_url: str | None
+    saved_at: datetime
