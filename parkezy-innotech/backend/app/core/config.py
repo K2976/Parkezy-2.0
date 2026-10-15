@@ -86,6 +86,22 @@ class Settings(BaseSettings):
     # Client-side per-statement ceiling (asyncpg command_timeout) so one slow query cannot pin a
     # pooled connection forever. Client-side because PgBouncer drops server startup parameters.
     db_command_timeout_seconds: float = 15.0
+    # How long a request waits for a free pooled connection before getting a 503 (SQLAlchemy's own
+    # default is 30 s, which turns a busy pool into 30-second hangs followed by errors).
+    db_pool_timeout_seconds: float = 3.0
+    # How long opening a new connection may take (asyncpg's default is 60 s).
+    db_connect_timeout_seconds: float = 5.0
+    # Retry-After sent with 503s when the database is busy or unreachable.
+    db_unavailable_retry_after_seconds: int = 5
+
+    # --- Request guards ---
+    # Largest request body accepted, in bytes. Photos and evidence go straight to object storage
+    # through presigned URLs, so API bodies are small JSON documents.
+    request_max_body_bytes: int = 1024 * 1024
+
+    # --- Health checks ---
+    # Upper bound for each dependency check in /health/ready, so the probe always answers quickly.
+    health_check_timeout_seconds: float = 2.0
 
     # --- Redis / jobs ---
     redis_url: str
@@ -117,6 +133,10 @@ class Settings(BaseSettings):
     verification_code_ttl_minutes: int = 15
     verification_code_max_attempts: int = 5
     verification_code_length: int = 6
+    # Password hashes computed at once per worker process. Each argon2 hash takes ~70 ms of CPU and
+    # 64 MiB of memory; hashing runs in threads so other requests keep flowing, and this caps the
+    # memory (workers x this x 64 MiB). Extra sign-ins wait their turn instead of piling up.
+    password_hash_concurrency: int = Field(default=2, ge=1, le=32)
 
     # --- Parking access (PIN / QR) ---
     access_code_secret: SecretStr

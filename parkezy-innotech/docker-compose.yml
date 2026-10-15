@@ -68,6 +68,63 @@ services:
     <<: *backend
     command: celery -A app.workers.celery_app beat --loglevel=INFO
 
+  # ------------------------------------------------------------------ load-test monitoring
+  #   docker compose --profile monitoring up -d   -> Prometheus :9090, Grafana :3000 (admin/admin)
+  # See loadtest/README.md. Prometheus scrapes the API running on the host (loadtest/run_api.sh).
+  prometheus:
+    image: prom/prometheus:v3.4.1
+    profiles: ["monitoring"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-remote-write-receiver   # k6 pushes its results here
+      - --enable-feature=native-histograms
+    volumes:
+      - ./loadtest/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    ports: ["${PROMETHEUS_PORT:-9090}:9090"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  grafana:
+    image: grafana/grafana:12.0.2
+    profiles: ["monitoring"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/parkezy-loadtest.json
+    volumes:
+      - ./loadtest/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./loadtest/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports: ["${GRAFANA_PORT:-3000}:3000"]
+    depends_on: [prometheus]
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    profiles: ["monitoring"]
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-parkezy}:${POSTGRES_PASSWORD:-parkezy}@db:5432/${POSTGRES_DB:-parkezy}?sslmode=disable
+    depends_on:
+      db: { condition: service_healthy }
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.74.0
+    profiles: ["monitoring"]
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis: { condition: service_healthy }
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    profiles: ["monitoring"]
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes: ["/:/host:ro,rslave"]
+
 volumes:
   pgdata:
   s3data:
+  promdata:
+  grafanadata:

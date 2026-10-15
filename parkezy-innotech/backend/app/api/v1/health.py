@@ -44,7 +44,5 @@ async def prometheus_metrics(request: Request, c: ContainerDep) -> Response:
         return Response(status_code=401)
     async with c.session_factory() as session:
         stats = await Services(c, session).ops().queue_stats()
-    metrics.OUTBOX_PENDING.set(stats["pending"])
-    metrics.OUTBOX_DEAD.set(stats["dead"])
-    body, content_type = metrics.render()
+    body, content_type = metrics.render(stats)
     return Response(body, media_type=content_type)

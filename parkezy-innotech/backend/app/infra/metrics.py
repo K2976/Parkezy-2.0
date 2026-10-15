@@ -8,13 +8,14 @@ import os
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
+    REGISTRY,
     CollectorRegistry,
     Counter,
-    Gauge,
     Histogram,
     generate_latest,
     multiprocess,
 )
+from prometheus_client.core import GaugeMetricFamily
 
 REQUESTS = Counter("parkezy_http_requests_total", "HTTP requests", ["method", "route", "status"])
 LATENCY = Histogram(
@@ -23,8 +24,22 @@ LATENCY = Histogram(
     ["method", "route"],
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5),
 )
-OUTBOX_PENDING = Gauge("parkezy_outbox_pending", "Outbox events waiting to be delivered", multiprocess_mode="max")
-OUTBOX_DEAD = Gauge("parkezy_outbox_dead_letters", "Outbox events that exhausted retries", multiprocess_mode="max")
+
+
+class _QueueCollector:
+    """Outbox gauges read fresh from the database on every scrape (see /metrics).
+
+    Deliberately NOT prometheus_client Gauges: in multiprocess mode each worker writes its last
+    value to a file, and files of workers that died (crash, restart) are never cleaned up without a
+    process-manager hook, so a dead worker's stale number would win "max" forever."""
+
+    def __init__(self, stats: dict[str, int]) -> None:
+        self._stats = stats
+
+    def collect(self):
+        pending, dead = self._stats["pending"], self._stats["dead"]
+        yield GaugeMetricFamily("parkezy_outbox_pending", "Outbox events waiting to be delivered", pending)
+        yield GaugeMetricFamily("parkezy_outbox_dead_letters", "Outbox events that exhausted retries", dead)
 
 
 def observe(method: str, route: str, status: int, seconds: float) -> None:
@@ -32,9 +47,18 @@ def observe(method: str, route: str, status: int, seconds: float) -> None:
     LATENCY.labels(method, route).observe(seconds)
 
 
-def render() -> tuple[bytes, str]:
+def render(queue_stats: dict[str, int]) -> tuple[bytes, str]:
+    registry = CollectorRegistry()
     if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
-        registry = CollectorRegistry()
-        multiprocess.MultiProcessCollector(registry)
-        return generate_latest(registry), CONTENT_TYPE_LATEST
-    return generate_latest(), CONTENT_TYPE_LATEST
+        multiprocess.MultiProcessCollector(registry)  # request metrics summed across workers
+    else:
+        registry.register(_ProcessMetrics())
+    registry.register(_QueueCollector(queue_stats))
+    return generate_latest(registry), CONTENT_TYPE_LATEST
+
+
+class _ProcessMetrics:
+    """Single-process mode: expose the default registry (request metrics, process/GC stats)."""
+
+    def collect(self):
+        yield from REGISTRY.collect()

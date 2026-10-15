@@ -9,7 +9,7 @@ from app.infra.bloom import BloomFilter
 from app.infra.cache import Cache
 from app.infra.one_time import OneTimeTokenRegistry
 from app.infra.rate_limit import RateLimiter
-from tests.conftest import make_settings
+from tests.conftest import Harness, make_settings
 
 
 async def _redis() -> Redis:
@@ -115,3 +115,16 @@ def test_production_rejects_wildcard_cors():
             smtp_host="localhost",
             cors_origins="*",
         )
+
+
+async def test_metrics_label_routes_with_their_full_template(h: Harness):
+    """Regression: routes are labelled with the /v1 prefix, so /v1/legal/{doc} (JSON) and
+    /legal/{doc} (HTML page) are separate series, and ids never leak into labels."""
+    from app.infra import metrics
+
+    await h.client.get("/v1/legal/terms")
+    await h.client.get("/legal/terms")
+    await h.client.get(f"/v1/listings/{uuid.uuid4()}")
+    labels = {s.labels["route"] for m in metrics.REQUESTS.collect() for s in m.samples if "route" in s.labels}
+    assert {"/v1/legal/{doc}", "/legal/{doc}", "/v1/listings/{listing_id}"} <= labels
+    assert not any(label.count("-") >= 4 for label in labels)  # no raw UUIDs
