@@ -64,7 +64,7 @@ class UserService:
         """Anonymise personal data and close the account. Financial records (bookings,
         ledger) are kept for tax purposes but no longer identify the person."""
         if user.password_hash:
-            self._auth.confirm_password(user, password or "")
+            await self._auth.confirm_password(user, password or "")
         live = list(BLOCKING_STATUSES)
         active = await self._session.scalar(
             select(func.count())

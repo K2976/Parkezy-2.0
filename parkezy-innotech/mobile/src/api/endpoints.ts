@@ -5,6 +5,7 @@ import type {
   AppNotification,
   AuthResponse,
   Booking,
+  BookingStatus,
   Dispute,
   HostDashboard,
   LegalDocKind,
@@ -146,8 +147,8 @@ export const hostApi = {
     api.request<Listing>(`/v1/host/listings/${id}/photos`, { method: 'POST', body: { upload_ids } }),
   removePhoto: (id: string, mediaId: string) =>
     api.request<Listing>(`/v1/host/listings/${id}/photos/${mediaId}`, { method: 'DELETE' }),
-  bookings: (group: BookingGroup | undefined, cursor?: string | null) =>
-    api.request<Page<Booking>>('/v1/host/bookings', { query: { group, cursor } }),
+  bookings: (group: BookingGroup | undefined, cursor?: string | null, status?: BookingStatus) =>
+    api.request<Page<Booking>>('/v1/host/bookings', { query: { group, cursor, status } }),
   approve: (id: string) => api.request<Booking>(`/v1/host/bookings/${id}/approve`, { method: 'POST' }),
   reject: (id: string, reason?: string) =>
     api.request<Booking>(`/v1/host/bookings/${id}/reject`, { method: 'POST', body: { reason: reason ?? null } }),

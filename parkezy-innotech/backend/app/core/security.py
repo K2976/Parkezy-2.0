@@ -1,7 +1,9 @@
+import asyncio
 import hashlib
 import hmac
 import secrets
 import uuid
+import weakref
 from datetime import datetime, timedelta
 
 import jwt
@@ -13,8 +15,21 @@ from app.core.errors import Unauthorized
 
 
 class PasswordHasher:
-    def __init__(self) -> None:
+    """argon2id with argon2-cffi's default (RFC 9106 low-memory) parameters.
+
+    Hashing is deliberately expensive (~70 ms CPU, 64 MiB RAM). The async methods run it in a
+    thread (argon2-cffi releases the GIL) so the event loop keeps serving other requests, and a
+    per-event-loop semaphore caps how many hashes run at once: memory stays bounded, and a burst of
+    sign-ins queues up here instead of starving everything else. The sync methods remain for
+    scripts and are identical in output.
+    """
+
+    def __init__(self, max_concurrency: int = 2) -> None:
         self._argon = _Argon2()
+        self._max_concurrency = max_concurrency
+        self._semaphores: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
+            weakref.WeakKeyDictionary()
+        )
 
     def hash(self, password: str) -> str:
         return self._argon.hash(password)
@@ -24,6 +39,21 @@ class PasswordHasher:
             return self._argon.verify(password_hash, password)
         except (VerifyMismatchError, InvalidHashError):
             return False
+
+    def _semaphore(self) -> asyncio.Semaphore:
+        loop = asyncio.get_running_loop()
+        sem = self._semaphores.get(loop)
+        if sem is None:
+            sem = self._semaphores[loop] = asyncio.Semaphore(self._max_concurrency)
+        return sem
+
+    async def hash_async(self, password: str) -> str:
+        async with self._semaphore():
+            return await asyncio.to_thread(self.hash, password)
+
+    async def verify_async(self, password_hash: str, password: str) -> bool:
+        async with self._semaphore():
+            return await asyncio.to_thread(self.verify, password_hash, password)
 
     def needs_rehash(self, password_hash: str) -> bool:
         return self._argon.check_needs_rehash(password_hash)

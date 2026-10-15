@@ -2,6 +2,7 @@ import { createElement, forwardRef, useEffect, useImperativeHandle, useRef, useS
 import { StyleSheet, View } from 'react-native';
 
 import type { ListingSearchItem } from '@/api/types';
+import { env } from '@/config/env';
 import { useTheme } from '@/ui/theme';
 
 export type MapRegion = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
@@ -190,7 +191,7 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
     var map = L.map('map', { zoomControl: false }).setView([${initialRegion.latitude}, ${initialRegion.longitude}], 14);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('${env.osmTileUrl}', {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);

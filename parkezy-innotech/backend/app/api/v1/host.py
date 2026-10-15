@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, Query, Response, status
 
 from app.api.deps import ContainerDep, HostUser, RulesDep, ServicesDep, UserRateLimit, page_limit
 from app.api.presenters import booking_out, listing_out, payout_account_out, payout_out, review_out
+from app.domain.enums import BookingStatus
 from app.schemas.bookings import AccessVerifyOut, AccessVerifyRequest, BookingOut, RejectRequest
 from app.schemas.common import Page
 from app.schemas.listings import ListingCreate, ListingOut, ListingUpdate, SlotInput, SlotUpdate
@@ -119,11 +120,12 @@ async def host_bookings(
     services: ServicesDep,
     rules: RulesDep,
     group: Annotated[str | None, Query(pattern="^(upcoming|active|past)$")] = None,
+    status: BookingStatus | None = None,
     cursor: str | None = None,
     limit: Annotated[int | None, Query(gt=0)] = None,
 ) -> Page[BookingOut]:
     views, next_cursor = await services.bookings().list_for(
-        host, as_host=True, group=group, cursor=cursor, limit=page_limit(rules, limit)
+        host, as_host=True, group=group, status=status, cursor=cursor, limit=page_limit(rules, limit)
     )
     return Page[BookingOut](items=[booking_out(v, host) for v in views], next_cursor=next_cursor)
 

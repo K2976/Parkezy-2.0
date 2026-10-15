@@ -14,7 +14,10 @@ from app.core.config import Settings
 
 def connect_args(settings: Settings, url: str) -> dict:
     # command_timeout bounds each statement; timeout bounds opening a connection (asyncpg default: 60 s).
-    args: dict = {"command_timeout": settings.db_command_timeout_seconds, "timeout": settings.db_connect_timeout_seconds}
+    args: dict = {
+        "command_timeout": settings.db_command_timeout_seconds,
+        "timeout": settings.db_connect_timeout_seconds,
+    }
     if settings.pgbouncer_for(url):
         # Transaction-mode PgBouncer hands each transaction a different server connection, so a
         # statement prepared on one is missing (or clashes by name) on the next. SQLAlchemy's recipe:

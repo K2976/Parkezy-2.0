@@ -1,0 +1,49 @@
+# Isolated data stack for load and chaos tests. Its own Compose project, containers, volumes and
+# ports, so pausing or overloading it never touches the dev stack (../docker-compose.yml) or the
+# dev API on :8000.
+#
+#   docker compose -f loadtest/docker-compose.yml up -d
+#   docker compose -f loadtest/docker-compose.yml down -v      # throw everything away
+name: parkezy-loadtest
+
+services:
+  lt-db:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_USER: parkezy
+      POSTGRES_PASSWORD: parkezy
+      POSTGRES_DB: parkezy_loadtest
+    ports: ["5435:5432"]
+    volumes: [lt-pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parkezy -d parkezy_loadtest"]
+      interval: 3s
+      retries: 20
+
+  lt-redis:
+    image: redis:7-alpine
+    ports: ["6381:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  # Exporters for the isolated stack, published on the host for the dev Prometheus to scrape.
+  lt-postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    environment:
+      DATA_SOURCE_NAME: postgresql://parkezy:parkezy@lt-db:5432/parkezy_loadtest?sslmode=disable
+    ports: ["9188:9187"]
+    depends_on:
+      lt-db: { condition: service_healthy }
+
+  lt-redis-exporter:
+    image: oliver006/redis_exporter:v1.74.0
+    environment:
+      REDIS_ADDR: redis://lt-redis:6379
+    ports: ["9122:9121"]
+    depends_on:
+      lt-redis: { condition: service_healthy }
+
+volumes:
+  lt-pgdata:

@@ -65,9 +65,11 @@ function dailySeries(d: HostDashboard): { values: number[]; labels: string[] } {
   const labels: string[] = [];
   for (let i = d.period_days - 1; i >= 0; i--) {
     const day = new Date(Date.now() - i * 86_400_000);
-    const key = day.toISOString().slice(0, 10);
+    // Same calendar day the server used (its timezone), not UTC: earnings made just after midnight
+    // in India would otherwise be drawn on the previous day's bar.
+    const key = new Intl.DateTimeFormat('en-CA', { timeZone: d.timezone }).format(day); // YYYY-MM-DD
     values.push(byDay.get(key) ?? 0);
-    labels.push(day.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
+    labels.push(day.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: d.timezone }));
   }
   return { values, labels };
 }
@@ -94,8 +96,10 @@ export default function HostHome() {
   const dashboard = useQuery({ queryKey: keys.hostDashboard, queryFn: () => hostApi.dashboard(PERIOD_DAYS), enabled: !!user?.is_host });
   const listings = useQuery({ queryKey: keys.hostListings, queryFn: hostApi.listings, enabled: !!user?.is_host });
   const requests = useQuery({
-    queryKey: keys.hostBookingsPreview('upcoming'),
-    queryFn: () => hostApi.bookings('upcoming'),
+    // Ask for pending requests directly: filtering the first page of all upcoming bookings could
+    // miss requests sitting behind newer confirmed bookings.
+    queryKey: keys.hostBookingsPreview('pending_approval'),
+    queryFn: () => hostApi.bookings(undefined, null, 'pending_approval'),
     enabled: !!user?.is_host,
     refetchInterval: 30_000,
   });
@@ -156,6 +160,7 @@ export default function HostHome() {
 
       <View style={{ gap: spacing.md, marginTop: spacing.xl }}>
         <Button title="Check a driver in or out" icon="qr-code-outline" onPress={() => router.push('/host/scan')} />
+        <Button title="List a new parking spot" kind="secondary" icon="add-circle-outline" onPress={() => router.push('/host/new-listing')} />
         <Button title="All bookings" kind="secondary" icon="list-outline" onPress={() => router.push('/host/bookings')} />
       </View>
 

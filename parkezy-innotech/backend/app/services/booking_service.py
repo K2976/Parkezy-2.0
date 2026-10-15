@@ -11,9 +11,10 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+from asyncpg.exceptions import DeadlockDetectedError  # type: ignore[import-untyped]
 from sqlalchemy import and_, func, literal, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import TSTZRANGE
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import Clock
@@ -92,6 +93,18 @@ class Quote:
     price: PriceBreakdown
     available: bool
     payment_mode: PaymentMode
+
+
+def _lost_slot_race(error: DBAPIError) -> bool:
+    """The insert/update lost a race for the slot: either the exclusion constraint fired, or two
+    transactions inserting overlapping periods deadlocked inside the constraint check (Postgres
+    exclusion constraints, unlike unique indexes, can deadlock; Postgres aborts one of them). Either
+    way the other transaction keeps the slot, so this one must treat it as taken."""
+    if isinstance(error, IntegrityError) and _constraint_name(error) == EXCLUSION_CONSTRAINT:
+        return True
+    return isinstance(getattr(error, "orig", None), Exception) and any(
+        isinstance(e, DeadlockDetectedError) for e in (error.orig, getattr(error.orig, "__cause__", None))
+    )
 
 
 def _constraint_name(error: IntegrityError) -> str | None:
@@ -185,12 +198,21 @@ class BookingService:
         return await self.view(booking)
 
     async def list_for(
-        self, user: User, *, as_host: bool, group: str | None, cursor: str | None, limit: int
+        self,
+        user: User,
+        *,
+        as_host: bool,
+        group: str | None,
+        cursor: str | None,
+        limit: int,
+        status: BookingStatus | None = None,
     ) -> tuple[list[BookingView], str | None]:
         owner_col = Booking.host_id if as_host else Booking.driver_id
         query = select(Booking).where(owner_col == user.id)
         if group:
             query = query.where(Booking.status.in_([s.value for s in STATUS_GROUPS[group]]))
+        if status:
+            query = query.where(Booking.status == status.value)
         if cursor:
             created, bid = decode_cursor(cursor)
             query = query.where(tuple_(Booking.created_at, Booking.id) < tuple_(created, bid))
@@ -331,13 +353,13 @@ class BookingService:
                 # SAVEPOINT: a lost race only rolls back this insert, not the whole session.
                 async with self._session.begin_nested():
                     self._session.add(booking)
-            except IntegrityError as e:
-                constraint = _constraint_name(e)
-                if constraint == IDEMPOTENCY_CONSTRAINT:  # concurrent replay of the same request
+            except DBAPIError as e:
+                if isinstance(e, IntegrityError) and _constraint_name(e) == IDEMPOTENCY_CONSTRAINT:
+                    # concurrent replay of the same request
                     replay = await self._by_idempotency(driver, idempotency_key)
                     assert replay is not None
                     return await self._replay(replay, listing_id, starts_at, ends_at), False
-                if constraint != EXCLUSION_CONSTRAINT:
+                if not _lost_slot_race(e):
                     raise
                 if slot_id:
                     raise Conflict("This slot was just booked for that time", code="slot_unavailable") from e
@@ -557,8 +579,8 @@ class BookingService:
                 booking.total_amount = q.new_price.total
                 booking.reminder_sent_at = None  # remind again before the new end
                 await self._session.flush()
-        except IntegrityError as e:
-            if _constraint_name(e) != EXCLUSION_CONSTRAINT:
+        except DBAPIError as e:
+            if not _lost_slot_race(e):
                 raise
             await self._session.rollback()
             raise Conflict("Someone has booked this slot right after you", code="slot_unavailable") from e

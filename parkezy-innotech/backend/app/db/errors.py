@@ -11,7 +11,7 @@ import asyncio
 from dataclasses import dataclass
 from types import TracebackType
 
-import asyncpg.exceptions as pg
+import asyncpg.exceptions as pg  # type: ignore[import-untyped]
 from sqlalchemy import exc as sa
 
 
@@ -46,12 +46,16 @@ _CONTENTION_ERRORS = (
 
 
 def _chain(exc: BaseException, limit: int = 8):
+    """The exception, what it wraps (SQLAlchemy's .orig) and what caused it."""
     seen: set[int] = set()
-    current: BaseException | None = exc
-    while current is not None and id(current) not in seen and len(seen) < limit:
+    todo: list[BaseException] = [exc]
+    while todo and len(seen) < limit:
+        current = todo.pop(0)
+        if id(current) in seen:
+            continue
         seen.add(id(current))
         yield current
-        current = current.__cause__ or current.__context__
+        todo += [e for e in (getattr(current, "orig", None), current.__cause__, current.__context__) if e is not None]
 
 
 def _driver_modules(tb: TracebackType | None) -> list[str]:
@@ -68,8 +72,21 @@ def _raised_in_db_driver(tb: TracebackType | None) -> bool:
     return any(m.startswith(("asyncpg", "sqlalchemy")) for m in _driver_modules(tb))
 
 
-def _while_connecting(tb: TracebackType | None) -> bool:
-    return any(m.startswith("asyncpg.connect_utils") for m in _driver_modules(tb))
+def _while_connecting(err: BaseException) -> bool:
+    """The timeout fired while opening a connection. asyncpg's connect() wraps the handshake in a
+    timeout, so the handshake frames (connect_utils) are on the cancelled inner task it chains to."""
+    current: BaseException | None = err
+    for _ in range(4):
+        if current is None:
+            return False
+        if any(m.startswith("asyncpg.connect_utils") for m in _driver_modules(current.__traceback__)):
+            return True
+        current = current.__context__
+    return False
+
+
+# Exception types the API routes through classify(); anything not transient is re-raised -> 500.
+HANDLED_TYPES: tuple[type[Exception], ...] = (sa.SQLAlchemyError, pg.PostgresError, pg.InterfaceError, OSError)
 
 
 def classify(exc: BaseException) -> DatabaseFailure | None:
@@ -83,7 +100,7 @@ def classify(exc: BaseException) -> DatabaseFailure | None:
         if isinstance(err, pg.PostgresError) and not isinstance(err, _CONNECTION_ERRORS):
             return None  # a real SQL error (constraint, syntax, bad data): not transient
         if isinstance(err, (TimeoutError, asyncio.TimeoutError)) and _raised_in_db_driver(err.__traceback__):
-            if _while_connecting(err.__traceback__):
+            if _while_connecting(err):
                 return DatabaseFailure(UNAVAILABLE, _DOWN_MSG, "connect_timeout")
             return DatabaseFailure(BUSY, _BUSY_MSG, "statement_timeout")
         if isinstance(err, _CONNECTION_ERRORS) and (

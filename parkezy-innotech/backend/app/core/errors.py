@@ -19,6 +19,13 @@ class AppError(Exception):
         self.details = details
 
 
+class InvalidCharacters(AppError):
+    """Input contains characters the system cannot store (U+0000). Malformed request -> 400."""
+
+    status_code = 400
+    code = "invalid_characters"
+
+
 class ValidationFailed(AppError):
     status_code = 422
     code = "validation_failed"

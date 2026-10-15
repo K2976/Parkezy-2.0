@@ -1,11 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from app.api.errors import install_error_handlers
+from app.api.guards import RequestGuardMiddleware, reject_nul_in_json_body
 from app.api.middleware import RequestContextMiddleware
 from app.api.v1 import admin, auth, bookings, health, host, legal, me, misc, public, reviews, support, webhooks
 from app.container import Container, build_container
@@ -70,10 +71,12 @@ def create_app(settings: Settings | None = None, container: Container | None = N
             allow_headers=["*"],
             allow_credentials=False,
         )
+    # Added last = runs first: request logging/metrics wrap the guard, so 413/400s are still counted.
+    app.add_middleware(RequestGuardMiddleware, max_body_bytes=settings.request_max_body_bytes)
     app.add_middleware(RequestContextMiddleware)
     install_error_handlers(app)
 
-    v1 = APIRouter(prefix="/v1")
+    v1 = APIRouter(prefix="/v1", dependencies=[Depends(reject_nul_in_json_body)])
     for module in (auth, me, public, bookings, reviews, host, misc, support, legal, admin, webhooks):
         v1.include_router(module.router)
     app.include_router(v1)

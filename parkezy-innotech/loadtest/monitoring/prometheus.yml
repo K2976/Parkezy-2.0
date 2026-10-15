@@ -17,13 +17,14 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:8001"]
 
+  # The isolated load-test Postgres/Redis (loadtest/docker-compose.yml), exporters published on the host.
   - job_name: postgres
     static_configs:
-      - targets: ["postgres-exporter:9187"]
+      - targets: ["host.docker.internal:9188"]
 
   - job_name: redis
     static_configs:
-      - targets: ["redis-exporter:9121"]
+      - targets: ["host.docker.internal:9122"]
 
   # CPU / memory / load of the machine running the test (the API runs on the host).
   - job_name: node

@@ -141,7 +141,7 @@ def build_container(settings: Settings, *, jobs: JobQueue, pooled_db: bool = Tru
         redis=redis,
         http=http,
         clock=clock,
-        hasher=PasswordHasher(),
+        hasher=PasswordHasher(max_concurrency=settings.password_hash_concurrency),
         tokens=TokenService(
             settings.jwt_secret.get_secret_value(),
             settings.jwt_algorithm,

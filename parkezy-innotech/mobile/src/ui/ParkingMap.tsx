@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Circle, Marker, UrlTile } from 'react-native-maps';
 
 import type { ListingSearchItem } from '@/api/types';
+import { env } from '@/config/env';
 import { Text } from '@/ui/components';
 import { fonts, radius, useTheme } from '@/ui/theme';
 import { money } from '@/utils/format';
@@ -12,7 +13,7 @@ export type MapRegion = { latitude: number; longitude: number; latitudeDelta: nu
 export type ParkingMapHandle = { animateTo: (region: MapRegion) => void };
 
 /** OpenStreetMap tile server URL template */
-const OSM_URL_TEMPLATE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_URL_TEMPLATE = env.osmTileUrl;
 
 type Props = {
   initialRegion: MapRegion;
@@ -47,7 +48,7 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
         maximumZ={19}
         flipY={false}
         tileSize={256}
-        zIndex={-1}
+        zIndex={1}
       />
       {userLocation && zoneRadiusM ? (
         <Circle
@@ -56,7 +57,7 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
           strokeWidth={1.5}
           strokeColor={colors.accent}
           fillColor="rgba(110, 91, 196, 0.10)"
-          zIndex={1}
+          zIndex={2}
         />
       ) : null}
       {userLocation ? (

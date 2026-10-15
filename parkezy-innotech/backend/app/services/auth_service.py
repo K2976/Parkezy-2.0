@@ -144,7 +144,7 @@ class AuthService:
     async def register(self, *, email: str, password: str, full_name: str, phone: str | None) -> User:
         user = User(
             email=email.lower(),
-            password_hash=self._hasher.hash(password),
+            password_hash=await self._hasher.hash_async(password),
             full_name=full_name.strip(),
             phone=phone,
             status=UserStatus.ACTIVE.value,
@@ -169,12 +169,22 @@ class AuthService:
             )
         ).scalar_one_or_none()
 
+    async def _release_connection_before_hashing(self) -> None:
+        """End the read-only transaction so its pooled connection goes back to the pool while this
+        request waits for (and spends ~70 ms on) a password hash. Holding it would let a burst of
+        sign-ins drain the pool for everyone. Only done when nothing is waiting to be written, so no
+        half-finished change is ever committed early."""
+        s = self._session
+        if s.in_transaction() and not (s.new or s.dirty or s.deleted):
+            await s.commit()
+
     async def login(self, *, email: str, password: str, user_agent: str | None) -> tuple[User, TokenPair]:
         user = await self._active_user_by_email(email)
-        if user is None or not user.password_hash or not self._hasher.verify(user.password_hash, password):
+        await self._release_connection_before_hashing()
+        if user is None or not user.password_hash or not await self._hasher.verify_async(user.password_hash, password):
             raise Unauthorized("Incorrect email or password", code="invalid_credentials")
         if self._hasher.needs_rehash(user.password_hash):
-            user.password_hash = self._hasher.hash(password)
+            user.password_hash = await self._hasher.hash_async(password)
         return user, await self._issue(user, user_agent)
 
     async def issue_for(self, user: User, user_agent: str | None) -> TokenPair:
@@ -255,11 +265,13 @@ class AuthService:
         await self._session.commit()
 
     async def reset_password(self, *, email: str, code: str, new_password: str) -> None:
+        # Hash first, before touching the database, so no connection or row lock is held while hashing.
+        new_hash = await self._hasher.hash_async(new_password)
         user = await self._active_user_by_email(email)
         if user is None:
             raise ValidationFailed("Invalid or expired code", code="invalid_code")
         await self._consume_code(user, CodePurpose.PASSWORD_RESET, code)
-        user.password_hash = self._hasher.hash(new_password)
+        user.password_hash = new_hash
         # A successful reset proves inbox ownership.
         user.email_verified_at = user.email_verified_at or self._clock.now()
         await self.revoke_all_sessions(user.id)
@@ -358,9 +370,10 @@ class AuthService:
         await self._session.flush()
         return user, True
 
-    def confirm_password(self, user: User, password: str) -> None:
+    async def confirm_password(self, user: User, password: str) -> None:
         """Re-authentication for sensitive actions: a stolen unlocked phone is not enough."""
-        if not user.password_hash or not self._hasher.verify(user.password_hash, password):
+        await self._release_connection_before_hashing()
+        if not user.password_hash or not await self._hasher.verify_async(user.password_hash, password):
             raise Forbidden("Current password is incorrect", code="invalid_credentials")
 
     async def change_password(self, user: User, *, current_password: str, new_password: str) -> None:
@@ -369,8 +382,8 @@ class AuthService:
                 "This account signs in with Google or Apple and has no password. Use 'Forgot password' to set one.",
                 code="no_password",
             )
-        self.confirm_password(user, current_password)
-        user.password_hash = self._hasher.hash(new_password)
+        await self.confirm_password(user, current_password)
+        user.password_hash = await self._hasher.hash_async(new_password)
         await self.revoke_all_sessions(user.id)
         self._outbox.add(Event.PASSWORD_CHANGED, {"user_id": str(user.id)})
         await self._session.commit()

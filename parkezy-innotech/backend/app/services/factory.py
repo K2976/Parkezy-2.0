@@ -71,7 +71,7 @@ class Services:
         return DisputeService(self.session, self.c.clock, self.uploads())
 
     def host_dashboard(self) -> HostDashboardService:
-        return HostDashboardService(self.session, self.c.clock)
+        return HostDashboardService(self.session, self.c.clock, self.c.settings.default_timezone)
 
     def ops(self) -> OpsService:
         return OpsService(self.session, self.c.clock, self.c.settings.outbox_max_attempts)
