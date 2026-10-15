@@ -27,6 +27,7 @@ from app.integrations.email import (
     ResendEmailSender,
     SmtpEmailSender,
 )
+from app.integrations.identity import IdentityVerifier, OidcIdentityVerifier
 from app.integrations.payments import PaymentGateway, RazorpayGateway
 from app.integrations.push import ExpoPushSender, NoopPushSender, PushSender
 from app.integrations.storage import ObjectStorage, S3ObjectStorage
@@ -58,6 +59,7 @@ class Container:
     email_renderer: EmailRenderer
     push_sender: PushSender
     jobs: JobQueue
+    identity_verifier: IdentityVerifier | None = None
     extras: dict = field(default_factory=dict)
 
     async def aclose(self) -> None:
@@ -170,6 +172,9 @@ def build_container(settings: Settings, *, jobs: JobQueue, pooled_db: bool = Tru
         ),
         push_sender=_push_sender(settings, http),
         jobs=jobs,
+        identity_verifier=OidcIdentityVerifier(
+            http, google_client_ids=settings.google_client_ids, apple_client_ids=settings.apple_client_ids
+        ),
     )
     parts.update(overrides)
     return Container(**parts)

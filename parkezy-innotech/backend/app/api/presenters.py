@@ -3,8 +3,8 @@
 import uuid
 from decimal import Decimal
 
-from app.db.models import Dispute, Listing, User
-from app.domain.enums import BookingStatus
+from app.db.models import Dispute, Favorite, Listing, Payout, PayoutAccount, Review, User
+from app.domain.enums import BookingStatus, ListingKind, PaymentMode, UserStatus
 from app.domain.pricing import money
 from app.integrations.storage import ObjectStorage
 from app.schemas.bookings import (
@@ -12,12 +12,19 @@ from app.schemas.bookings import (
     BookingOut,
     BookingSlotOut,
     PartyOut,
+    ReceiptLineOut,
+    ReceiptListingOut,
+    ReceiptOut,
+    ReceiptPartyOut,
 )
-from app.schemas.listings import HostSummary, ListingOut, ListingSearchItem, MediaOut, SlotOut
+from app.schemas.listings import FavoriteOut, HostSummary, ListingOut, ListingSearchItem, MediaOut, SlotOut
 from app.schemas.misc import DisputeOut
-from app.schemas.users import UserOut
+from app.schemas.payouts import PayoutAccountOut, PayoutOut
+from app.schemas.reviews import ReviewAuthor, ReviewOut
+from app.schemas.users import AdminUserDetail, AdminUserOut, UserOut
 from app.services.booking_service import BookingView
 from app.services.listing_service import effective_rate
+from app.services.receipt_service import ReceiptDoc
 
 # Drivers see the gate/access instructions and host phone only once the booking is real.
 REVEAL_STATUSES = {BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value}
@@ -149,3 +156,93 @@ def dispute_out(dispute: Dispute, storage: ObjectStorage) -> DisputeOut:
 
 def host_earnings(gross: Decimal, commission_rate: Decimal) -> Decimal:
     return gross - money(gross * commission_rate)
+
+
+def first_name(user: User | None) -> str:
+    return user.full_name.split(" ")[0] if user and user.full_name else "Parkezy user"
+
+
+def review_out(review: Review, author: User | None) -> ReviewOut:
+    return ReviewOut(
+        id=review.id,
+        booking_id=review.booking_id,
+        listing_id=review.listing_id,
+        rating=review.rating,
+        comment=review.comment,
+        author=ReviewAuthor(first_name=first_name(author)),
+        host_reply=review.host_reply,
+        host_replied_at=review.host_replied_at,
+        created_at=review.created_at,
+        updated_at=review.updated_at,
+    )
+
+
+def favorite_out(listing: Listing, favorite: Favorite, cover_key: str | None, storage: ObjectStorage) -> FavoriteOut:
+    return FavoriteOut(
+        id=listing.id,
+        kind=ListingKind(listing.kind),
+        title=listing.title,
+        address_line=listing.address_line,
+        city=listing.city,
+        latitude=listing.latitude,
+        longitude=listing.longitude,
+        hourly_rate=listing.hourly_rate,
+        currency=listing.currency,
+        amenities=list(listing.amenities),
+        rating_avg=listing.rating_avg,
+        rating_count=listing.rating_count,
+        cover_photo_url=storage.download_url(cover_key) if cover_key else None,
+        saved_at=favorite.created_at,
+    )
+
+
+def payout_out(payout: Payout) -> PayoutOut:
+    return PayoutOut.model_validate(payout)
+
+
+def payout_account_out(account: PayoutAccount) -> PayoutAccountOut:
+    bank = account.method == "bank_account"
+    return PayoutAccountOut(
+        method=account.method,
+        upi_id=None if bank else account.upi_id,
+        account_holder_name=account.account_holder_name if bank else None,
+        account_number_last4=(account.account_number or "")[-4:] if bank else None,
+        ifsc=account.ifsc if bank else None,
+        updated_at=account.updated_at,
+    )
+
+
+def admin_user_out(user: User) -> AdminUserOut:
+    return AdminUserOut(**user_out(user).model_dump(), status=UserStatus(user.status))
+
+
+def admin_user_detail(user: User, counts: dict[str, int]) -> AdminUserDetail:
+    return AdminUserDetail.model_validate(
+        admin_user_out(user).model_dump()
+        | counts
+        | {"suspension_reason": user.suspension_reason, "suspended_at": user.suspended_at}
+    )
+
+
+def receipt_out(doc: ReceiptDoc) -> ReceiptOut:
+    b, listing = doc.view.booking, doc.view.listing
+    return ReceiptOut(
+        invoice_number=doc.receipt.invoice_number,
+        issued_at=doc.receipt.issued_at,
+        booking_id=b.id,
+        currency=b.currency,
+        payment_mode=PaymentMode(b.payment_mode),
+        listing=ReceiptListingOut(title=listing.title, address_line=listing.address_line, city=listing.city),
+        driver=ReceiptPartyOut(full_name=doc.view.driver.full_name),
+        host=ReceiptPartyOut(full_name=doc.view.host.full_name),
+        starts_at=b.starts_at,
+        ends_at=b.ends_at,
+        checked_in_at=b.checked_in_at,
+        checked_out_at=b.checked_out_at,
+        line_items=[ReceiptLineOut(kind=i.kind, description=i.description, amount=i.amount) for i in doc.line_items],
+        subtotal=doc.subtotal,
+        tax_amount=doc.tax_amount,
+        total=doc.total,
+        amount_paid=doc.amount_paid,
+        amount_due=doc.amount_due,
+    )

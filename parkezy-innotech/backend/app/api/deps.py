@@ -80,10 +80,12 @@ async def get_current_user(
 ) -> User:
     if credentials is None:
         raise Unauthorized("Sign in required", code="not_authenticated")
-    user_id = services.auth().user_id_from_access_token(credentials.credentials)
+    user_id, token_version = services.auth().access_claims(credentials.credentials)
     user = await services.session.get(User, user_id)
     if user is None or user.status != UserStatus.ACTIVE.value:
         raise Unauthorized("Account unavailable", code="account_inactive")
+    if token_version != user.token_version:
+        raise Unauthorized("Session expired, please sign in again", code="session_revoked")
     return user
 
 

@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.db.models import Booking, Dispute, SupportTicket, User
+from app.db.models import Booking, Dispute, Payout, SupportTicket, User
 from app.services.booking_service import BookingService, BookingView
 from app.services.email_service import EmailService
 from app.services.notification_service import EmailSpec, NotificationService
@@ -314,6 +314,20 @@ async def on_ending_soon(ctx: HandlerContext, event_id: str, payload: dict) -> N
     )
 
 
+@handles(Event.BOOKING_EXTENDED)
+async def on_extended(ctx: HandlerContext, event_id: str, payload: dict) -> None:
+    view = await _view(ctx, payload)
+    c = booking_context(view, ctx.settings)
+    await _notify(
+        ctx,
+        view.host,
+        event_id,
+        "Booking extended",
+        f"{view.driver.full_name} extended their stay at {view.listing.title} until {c['ends_at']}.",
+        {"type": "booking_update", "booking_id": c["booking_id"]},
+    )
+
+
 @handles(Event.BOOKING_COMPLETED)
 async def on_completed(ctx: HandlerContext, event_id: str, payload: dict) -> None:
     view = await _view(ctx, payload)
@@ -366,5 +380,36 @@ async def on_dispute_updated(ctx: HandlerContext, event_id: str, payload: dict) 
         EmailSpec(
             "dispute_update",
             {"name": reporter.full_name, "status": dispute.status, "resolution": dispute.resolution or ""},
+        ),
+    )
+
+
+# ------------------------------------------------------------------ payouts
+@handles(Event.PAYOUT_PAID, Event.PAYOUT_REJECTED)
+async def on_payout_decided(ctx: HandlerContext, event_id: str, payload: dict) -> None:
+    payout = await ctx.session.get(Payout, uuid.UUID(payload["payout_id"]))
+    if payout is None:
+        return
+    host = await ctx.session.get(User, payout.host_id)
+    if host is None or host.status != "active":
+        return
+    paid = payout.status == "paid"
+    amount = f"{payout.currency} {payout.amount:.2f}"
+    title = "Payout sent" if paid else "Payout returned"
+    body = (
+        f"{amount} is on its way to your account (reference {payout.reference})."
+        if paid
+        else f"Your {amount} payout couldn't be sent: {payout.reject_reason}. The money is back in your balance."
+    )
+    await _notify(
+        ctx,
+        host,
+        event_id,
+        title,
+        body,
+        {"type": "payout", "payout_id": str(payout.id)},
+        EmailSpec(
+            "payout_update",
+            {"name": host.full_name, "title": title, "amount": amount, "detail": body, "paid": paid},
         ),
     )

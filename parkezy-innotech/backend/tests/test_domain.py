@@ -45,6 +45,8 @@ RULES = PlatformRules(
     search_max_results=200,
     default_page_size=20,
     max_page_size=100,
+    review_window_days=14,
+    min_payout_amount=Decimal("100.00"),
 )
 T0 = datetime(2026, 10, 14, 10, 0, tzinfo=UTC)
 

@@ -7,12 +7,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import ContainerDep, ReadServicesDep, RulesDep, ServicesDep
-from app.api.presenters import listing_out, search_item
+from app.api.deps import ContainerDep, OptionalUser, ReadServicesDep, RulesDep, ServicesDep, page_limit
+from app.api.presenters import listing_out, review_out, search_item
 from app.core.errors import ValidationFailed
 from app.domain.enums import Amenity, DisputeReason, ListingKind, SlotType
+from app.schemas.common import Page
 from app.schemas.listings import ListingOut, ListingSearchItem, ListingSearchParams
 from app.schemas.misc import PublicConfigOut
+from app.schemas.reviews import ReviewOut
 
 router = APIRouter(tags=["discovery"])
 
@@ -97,6 +99,7 @@ async def get_listing(
     listing_id: uuid.UUID,
     services: ReadServicesDep,
     c: ContainerDep,
+    viewer: OptionalUser,
     starts_at: datetime | None = None,
     ends_at: datetime | None = None,
 ) -> ListingOut:
@@ -105,4 +108,20 @@ async def get_listing(
     listings = services.listings()
     listing = await listings.get_public(listing_id)
     availability = await listings.slot_availability(listing, starts_at, ends_at) if starts_at and ends_at else None
-    return listing_out(listing, await listings.host_of(listing), c.storage, availability=availability)
+    out = listing_out(listing, await listings.host_of(listing), c.storage, availability=availability)
+    out.is_favorite = await services.favorites().is_saved(viewer, listing.id)
+    return out
+
+
+@router.get("/listings/{listing_id}/reviews", response_model=Page[ReviewOut])
+async def listing_reviews(
+    listing_id: uuid.UUID,
+    services: ReadServicesDep,
+    rules: RulesDep,
+    cursor: str | None = None,
+    limit: Annotated[int | None, Query(gt=0)] = None,
+) -> Page[ReviewOut]:
+    reviews = services.reviews()
+    items, next_cursor = await reviews.list_for_listing(listing_id, cursor=cursor, limit=page_limit(rules, limit))
+    authors = await reviews.authors(items)
+    return Page[ReviewOut](items=[review_out(r, authors.get(r.author_id)) for r in items], next_cursor=next_cursor)

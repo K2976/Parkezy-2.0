@@ -111,3 +111,26 @@ async def relogin(h: Harness, *users: dict) -> None:
         r = await h.client.post("/v1/auth/login", json={"email": user["email"], "password": "parking123"})
         assert r.status_code == 200, r.text
         user["token"] = r.json()["tokens"]["access_token"]
+
+
+def slot_id(listing: dict, label: str = "A1") -> str:
+    return next(s["id"] for s in listing["slots"] if s["label"] == label)
+
+
+async def check_in(h: Harness, host: dict, driver: dict, booking: dict) -> None:
+    """Move the clock to the booking start and have the host scan the driver's QR."""
+    h.clock.advance(seconds=max(0.0, (parse(booking["starts_at"]) - h.clock.now()).total_seconds()))
+    await relogin(h, host, driver)
+    creds = (await h.client.get(f"/v1/bookings/{booking['id']}/access", headers=auth(driver["token"]))).json()
+    r = await h.client.post("/v1/host/access/verify", json={"qr_token": creds["qr_token"]}, headers=auth(host["token"]))
+    assert r.status_code == 200 and r.json()["action"] == "checked_in", r.text
+
+
+async def complete_booking(h: Harness, host: dict, driver: dict, booking: dict) -> dict:
+    """Check in at the start, check out exactly at the end (no overstay). Returns the completed booking."""
+    await check_in(h, host, driver, booking)
+    h.clock.advance(seconds=max(0.0, (parse(booking["ends_at"]) - h.clock.now()).total_seconds()))
+    await relogin(h, host, driver)
+    r = await h.client.post(f"/v1/bookings/{booking['id']}/check-out", headers=auth(driver["token"]))
+    assert r.status_code == 200 and r.json()["status"] == "completed", r.text
+    return r.json()

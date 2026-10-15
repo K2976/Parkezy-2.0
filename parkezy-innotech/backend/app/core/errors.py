@@ -49,6 +49,11 @@ class RateLimited(AppError):
     code = "rate_limited"
 
 
+class ServiceUnavailable(AppError):
+    status_code = 503
+    code = "service_unavailable"
+
+
 class ExternalServiceError(AppError):
     status_code = 502
     code = "external_service_error"

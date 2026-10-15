@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import EmailStr, Field, field_validator
 
-from app.domain.enums import NotificationCategory
+from app.domain.enums import NotificationCategory, SocialProvider, UserStatus
 from app.schemas.common import Schema
 
 PHONE_RE = re.compile(r"^\+?[1-9]\d{7,14}$")
@@ -112,4 +112,28 @@ class NotificationPreferences(Schema):
 
 
 class DeleteAccountRequest(Schema):
-    password: str = Field(min_length=1, max_length=128)
+    # Required when the account has a password; Google/Apple-only accounts have none to confirm.
+    password: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class SocialSignInRequest(Schema):
+    provider: SocialProvider
+    id_token: str = Field(min_length=1, max_length=8192)
+    nonce: str | None = Field(default=None, max_length=256)
+    # Apple only shares the name on the very first sign-in, and only with the app.
+    full_name: str | None = Field(default=None, max_length=120)
+
+
+class AdminUserOut(UserOut):
+    status: UserStatus
+
+
+class AdminUserDetail(AdminUserOut):
+    listings_count: int
+    bookings_count: int
+    suspension_reason: str | None
+    suspended_at: datetime | None
+
+
+class SuspendRequest(Schema):
+    reason: str = Field(min_length=3, max_length=500)

@@ -41,6 +41,10 @@ class User(UUIDPk, Timestamps, Base):
     is_commercial_host: Mapped[bool] = mapped_column(Boolean, default=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Embedded in access tokens: bumping it invalidates every token already issued.
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspension_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class RefreshToken(UUIDPk, Base):
@@ -317,3 +321,71 @@ class SupportTicket(UUIDPk, Timestamps, Base):
     message: Mapped[str] = mapped_column(Text)
     booking_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("bookings.id", ondelete="SET NULL"))
     status: Mapped[str] = mapped_column(String(16))
+
+
+class SocialIdentity(UUIDPk, Base):
+    __tablename__ = "social_identities"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    provider: Mapped[str] = mapped_column(String(16))
+    subject: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(CITEXT)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Review(UUIDPk, Timestamps, Base):
+    __tablename__ = "reviews"
+
+    booking_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"))
+    listing_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"))
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    rating: Mapped[int] = mapped_column(SmallInteger)
+    comment: Mapped[str | None] = mapped_column(Text)
+    host_reply: Mapped[str | None] = mapped_column(Text)
+    host_replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    listing_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PayoutAccount(Base):
+    __tablename__ = "payout_accounts"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    method: Mapped[str] = mapped_column(String(16))
+    upi_id: Mapped[str | None] = mapped_column(String(256))
+    account_holder_name: Mapped[str | None] = mapped_column(String(120))
+    account_number: Mapped[str | None] = mapped_column(String(18))
+    ifsc: Mapped[str | None] = mapped_column(String(11))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Payout(UUIDPk, Timestamps, Base):
+    __tablename__ = "payouts"
+
+    host_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    amount: Mapped[Decimal] = mapped_column(MONEY)
+    currency: Mapped[str] = mapped_column(String(3))
+    status: Mapped[str] = mapped_column(String(16))
+    method: Mapped[str] = mapped_column(String(16))
+    # Snapshot of where the money goes, so changing the account later never redirects it.
+    destination: Mapped[dict] = mapped_column(JSONB)
+    idempotency_key: Mapped[str] = mapped_column(String(64))
+    reference: Mapped[str | None] = mapped_column(String(128))
+    reject_reason: Mapped[str | None] = mapped_column(Text)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Receipt(UUIDPk, Base):
+    __tablename__ = "receipts"
+
+    booking_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"))
+    invoice_number: Mapped[str] = mapped_column(String(32))
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -137,6 +137,25 @@ class LedgerAccount(StrEnum):
     PLATFORM_REVENUE = "platform_revenue"
     PLATFORM_FEE_RECEIVABLE = "platform_fee_receivable"
     GST_PAYABLE = "gst_payable"
+    PAYOUTS_PENDING = "payouts_pending"  # requested withdrawals waiting to be sent
+    PLATFORM_BANK = "platform_bank"  # money that left the platform's account
+
+
+class PayoutStatus(StrEnum):
+    REQUESTED = "requested"
+    PAID = "paid"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class PayoutMethod(StrEnum):
+    UPI = "upi"
+    BANK_ACCOUNT = "bank_account"
+
+
+class SocialProvider(StrEnum):
+    GOOGLE = "google"
+    APPLE = "apple"
 
 
 class NotificationChannel(StrEnum):

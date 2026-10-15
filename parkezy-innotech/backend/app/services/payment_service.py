@@ -22,6 +22,8 @@ from app.services.jobs import JobQueue
 log = logging.getLogger(__name__)
 
 PAYABLE_STATUSES = (BookingStatus.PENDING_PAYMENT.value, BookingStatus.COMPLETED.value)
+# Already-confirmed bookings only owe money after an extension; otherwise there is nothing to pay.
+TOP_UP_STATUSES = (BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value)
 
 
 class PaymentService:
@@ -68,12 +70,14 @@ class PaymentService:
         booking = await self._locked_booking(booking_id)
         if booking.driver_id != driver.id:
             raise NotFound("Booking not found")
-        if booking.status not in PAYABLE_STATUSES:
+        if booking.status not in PAYABLE_STATUSES + TOP_UP_STATUSES:
             raise Conflict("Nothing to pay for this booking", code="not_payable")
         if booking.status == BookingStatus.PENDING_PAYMENT.value and booking.hold_expires_at <= self._clock.now():
             raise Conflict("The reservation hold has expired, please book again", code="hold_expired")
         target = booking.final_amount if booking.final_amount is not None else booking.total_amount
         due = target - await self._paid_total(booking.id)
+        if booking.status in TOP_UP_STATUSES and due <= 0:
+            raise Conflict("Nothing to pay for this booking", code="not_payable")
         if due <= 0:
             raise Conflict("This booking is already paid", code="already_paid")
         existing = (

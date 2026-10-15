@@ -185,6 +185,10 @@ class Settings(BaseSettings):
     expo_push_url: AnyHttpUrl = AnyHttpUrl("https://exp.host/--/api/v2/push/send")
     expo_access_token: SecretStr | None = None
 
+    # --- Sign in with Google / Apple (comma-separated OAuth client ids; empty disables the provider) ---
+    google_client_ids: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    apple_client_ids: Annotated[list[str], NoDecode] = Field(default_factory=list)
+
     # --- External HTTP ---
     http_timeout_seconds: float = 10.0
 
@@ -195,7 +199,9 @@ class Settings(BaseSettings):
         default=None, description="Bearer token for GET /metrics; empty disables it"
     )
 
-    _csv = field_validator("cors_origins", "admin_emails", "upload_allowed_types", mode="before")(_split_csv)
+    _csv = field_validator(
+        "cors_origins", "admin_emails", "upload_allowed_types", "google_client_ids", "apple_client_ids", mode="before"
+    )(_split_csv)
     _db_url = field_validator("database_url", "database_read_url", mode="before")(normalize_database_url)
 
     @field_validator("admin_emails")

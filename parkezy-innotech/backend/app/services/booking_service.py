@@ -5,14 +5,14 @@ this service translates that violation into a clean 409 and, when the driver did
 specific slot, retries with the next free one.
 """
 
-import base64
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, or_, select, tuple_
+from sqlalchemy import and_, func, literal, or_, select, tuple_
+from sqlalchemy.dialects.postgresql import TSTZRANGE
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +24,7 @@ from app.db.models import Booking, Listing, Payment, Slot, User
 from app.domain import booking_state
 from app.domain.access import AccessCodeService
 from app.domain.availability import ensure_within_hours, validate_window
-from app.domain.enums import BookingStatus, ListingStatus, PaymentMode, PaymentStatus
+from app.domain.enums import BLOCKING_STATUSES, BookingStatus, PaymentMode, PaymentStatus
 from app.domain.pricing import PriceBreakdown, cancellation_fee, overstay, quote
 from app.domain.rules import PlatformRules
 from app.infra.cache import Cache
@@ -32,12 +32,14 @@ from app.infra.one_time import OneTimeTokenRegistry
 from app.services.ledger_service import LedgerService
 from app.services.listing_service import (
     LISTINGS_CACHE_NS,
+    bookable_clause,
     effective_rate,
     opening_hours,
     slot_busy_clause,
     window_range,
 )
 from app.services.outbox import Event, Outbox
+from app.services.pagination import decode_cursor, encode_cursor
 
 QR_PURPOSE = "parking_access"
 AUTO_PICK_RETRIES = 3
@@ -69,24 +71,27 @@ class BookingView:
 
 
 @dataclass(frozen=True)
+class ExtensionQuote:
+    booking: Booking
+    new_ends_at: datetime
+    additional_minutes: int
+    subtotal: Decimal
+    tax_amount: Decimal
+    total: Decimal
+    available: bool
+    new_price: PriceBreakdown | None  # None when nothing changes (same end time)
+
+
+EXTENDABLE = (BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value)
+
+
+@dataclass(frozen=True)
 class Quote:
     listing: Listing
     slot: Slot | None
     price: PriceBreakdown
     available: bool
     payment_mode: PaymentMode
-
-
-def _encode_cursor(created_at: datetime, booking_id: uuid.UUID) -> str:
-    return base64.urlsafe_b64encode(f"{created_at.isoformat()}|{booking_id}".encode()).decode()
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
-    try:
-        created, bid = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
-        return datetime.fromisoformat(created), uuid.UUID(bid)
-    except (ValueError, UnicodeDecodeError) as e:
-        raise ValidationFailed("Invalid cursor", code="invalid_cursor") from e
 
 
 def _constraint_name(error: IntegrityError) -> str | None:
@@ -187,20 +192,26 @@ class BookingService:
         if group:
             query = query.where(Booking.status.in_([s.value for s in STATUS_GROUPS[group]]))
         if cursor:
-            created, bid = _decode_cursor(cursor)
+            created, bid = decode_cursor(cursor)
             query = query.where(tuple_(Booking.created_at, Booking.id) < tuple_(created, bid))
         rows = list(
             (await self._session.execute(query.order_by(Booking.created_at.desc(), Booking.id.desc()).limit(limit + 1)))
             .scalars()
             .all()
         )
-        next_cursor = _encode_cursor(rows[limit - 1].created_at, rows[limit - 1].id) if len(rows) > limit else None
+        next_cursor = encode_cursor(rows[limit - 1].created_at, rows[limit - 1].id) if len(rows) > limit else None
         return await self._views(rows[:limit]), next_cursor
 
     # ================================================================ quote
     async def _load_bookable(self, listing_id: uuid.UUID) -> Listing:
-        listing = await self._session.get(Listing, listing_id)
-        if listing is None or listing.status != ListingStatus.ACTIVE.value:
+        # FOR SHARE: a concurrent delete (FOR UPDATE) waits for this booking, or this waits and then
+        # sees the listing archived - a booking can never land on a listing that was just deleted.
+        listing = (
+            await self._session.execute(
+                select(Listing).where(Listing.id == listing_id, bookable_clause()).with_for_update(read=True)
+            )
+        ).scalar_one_or_none()
+        if listing is None:
             raise NotFound("Listing not found")
         return listing
 
@@ -449,6 +460,111 @@ class BookingService:
                 "refund_amount": str(paid - kept),
                 "fee_kept": str(kept),
             },
+        )
+        await self._session.commit()
+        await self._cache.bump(LISTINGS_CACHE_NS)
+        return await self.view(booking)
+
+    # ================================================================ extend
+    async def _extension(
+        self, driver: User, booking: Booking, new_ends_at: datetime, rules: PlatformRules
+    ) -> ExtensionQuote:
+        """Validate and price moving `booking` to end at `new_ends_at` (same slot, locked rate)."""
+        if booking.driver_id != driver.id:
+            raise NotFound("Booking not found")
+        if booking.status not in EXTENDABLE:
+            raise Conflict("Only confirmed or active bookings can be extended", code="not_extendable")
+        if self._clock.now() >= booking.ends_at:
+            raise Conflict("This booking has already ended; overstay fees apply instead", code="booking_ended")
+        if new_ends_at.tzinfo is None:
+            raise ValidationFailed("Times must include a timezone offset", code="naive_datetime")
+        step = rules.booking_step_minutes
+        if new_ends_at.second or new_ends_at.microsecond or new_ends_at.minute % step:
+            raise ValidationFailed(
+                f"ends_at must be on a {step}-minute boundary",
+                code="time_not_aligned",
+                details={"field": "ends_at", "step_minutes": step},
+            )
+        if new_ends_at < booking.ends_at:
+            raise ValidationFailed("The new end must be after the current end", code="invalid_extension")
+        if new_ends_at == booking.ends_at:  # a retried request that already went through
+            zero = Decimal("0.00")
+            return ExtensionQuote(booking, new_ends_at, 0, zero, zero, zero, True, None)
+        if (new_ends_at - booking.starts_at).total_seconds() / 60 > rules.max_booking_minutes:
+            raise ValidationFailed(
+                "Booking duration is out of range",
+                code="duration_out_of_range",
+                details={"min_minutes": rules.min_booking_minutes, "max_minutes": rules.max_booking_minutes},
+            )
+        listing = await self._session.get(Listing, booking.listing_id)
+        assert listing is not None
+        ensure_within_hours(booking.starts_at, new_ends_at, opening_hours(listing))
+        # Re-price the whole stay at the rate locked when booking (host price changes don't apply).
+        new_price = quote(
+            starts_at=booking.starts_at,
+            ends_at=new_ends_at,
+            hourly_rate=booking.hourly_rate,
+            daily_cap=listing.daily_cap,
+            tax_rate=booking.tax_rate,
+            commission_rate=booking.commission_rate,
+            currency=booking.currency,
+        )
+        clash = await self._session.scalar(
+            select(func.count()).where(
+                Booking.slot_id == booking.slot_id,
+                Booking.id != booking.id,
+                Booking.status.in_([s.value for s in BLOCKING_STATUSES]),
+                Booking.period.op("&&")(literal(window_range(booking.ends_at, new_ends_at), TSTZRANGE)),
+            )
+        )
+        subtotal = max(Decimal("0.00"), new_price.subtotal - booking.subtotal)
+        tax = max(Decimal("0.00"), new_price.tax_amount - booking.tax_amount)
+        return ExtensionQuote(
+            booking,
+            new_ends_at,
+            int((new_ends_at - booking.ends_at).total_seconds() // 60),
+            subtotal,
+            tax,
+            subtotal + tax,
+            not clash,
+            new_price,
+        )
+
+    async def extension_quote(
+        self, driver: User, booking_id: uuid.UUID, new_ends_at: datetime, rules: PlatformRules
+    ) -> ExtensionQuote:
+        return await self._extension(driver, await self._get(booking_id), new_ends_at, rules)
+
+    async def extend(
+        self, driver: User, booking_id: uuid.UUID, new_ends_at: datetime, rules: PlatformRules
+    ) -> BookingView:
+        # The row lock serialises concurrent extensions of the same booking.
+        booking = await self._get(booking_id, lock=True)
+        q = await self._extension(driver, booking, new_ends_at, rules)
+        if q.new_price is None:
+            await self._session.commit()
+            return await self.view(booking)
+        if not q.available:
+            raise Conflict("Someone has booked this slot right after you", code="slot_unavailable")
+        previous_end = booking.ends_at
+        try:
+            # The exclusion constraint is the final word if a booking for the extra time lands concurrently.
+            async with self._session.begin_nested():
+                booking.period = window_range(booking.starts_at, new_ends_at)
+                booking.subtotal = q.new_price.subtotal
+                booking.tax_amount = q.new_price.tax_amount
+                booking.platform_fee = q.new_price.platform_fee
+                booking.total_amount = q.new_price.total
+                booking.reminder_sent_at = None  # remind again before the new end
+                await self._session.flush()
+        except IntegrityError as e:
+            if _constraint_name(e) != EXCLUSION_CONSTRAINT:
+                raise
+            await self._session.rollback()
+            raise Conflict("Someone has booked this slot right after you", code="slot_unavailable") from e
+        self._outbox.add(
+            Event.BOOKING_EXTENDED,
+            {"booking_id": str(booking.id), "previous_ends_at": previous_end.isoformat(), "extra_total": str(q.total)},
         )
         await self._session.commit()
         await self._cache.bump(LISTINGS_CACHE_NS)

@@ -145,3 +145,56 @@ class AccessCredentialsOut(Schema):
 class AccessVerifyOut(Schema):
     action: str  # "checked_in" | "checked_out"
     booking: BookingOut
+
+
+class ExtendRequest(Schema):
+    ends_at: datetime
+
+
+class ExtensionQuoteOut(Schema):
+    booking_id: uuid.UUID
+    current_ends_at: datetime
+    new_ends_at: datetime
+    additional_minutes: int
+    subtotal: Decimal
+    tax_amount: Decimal
+    total: Decimal
+    currency: str
+    available: bool
+
+
+class ReceiptLineOut(Schema):
+    kind: str
+    description: str
+    amount: Decimal
+
+
+class ReceiptListingOut(Schema):
+    title: str
+    address_line: str
+    city: str
+
+
+class ReceiptPartyOut(Schema):
+    full_name: str
+
+
+class ReceiptOut(Schema):
+    invoice_number: str
+    issued_at: datetime
+    booking_id: uuid.UUID
+    currency: str
+    payment_mode: PaymentMode
+    listing: ReceiptListingOut
+    driver: ReceiptPartyOut
+    host: ReceiptPartyOut
+    starts_at: datetime
+    ends_at: datetime
+    checked_in_at: datetime | None
+    checked_out_at: datetime | None
+    line_items: list[ReceiptLineOut]
+    subtotal: Decimal
+    tax_amount: Decimal
+    total: Decimal
+    amount_paid: Decimal
+    amount_due: Decimal

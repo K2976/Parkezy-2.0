@@ -16,7 +16,7 @@ from app.core.config import Settings
 from app.core.errors import Conflict, Forbidden, NotFound, ValidationFailed
 from app.db.models import Booking, Listing, ListingMedia, Slot, User
 from app.domain.availability import OpeningHours, is_within_hours
-from app.domain.enums import BLOCKING_STATUSES, ListingKind, ListingStatus, UploadPurpose
+from app.domain.enums import BLOCKING_STATUSES, ListingKind, ListingStatus, UploadPurpose, UserStatus
 from app.domain.geo import cell_for_search, haversine_m
 from app.domain.rules import PlatformRules
 from app.infra.cache import Cache
@@ -57,6 +57,16 @@ def slot_busy_clause(starts_at: datetime, ends_at: datetime):
     )
 
 
+def owner_active_clause():
+    """SQL predicate: the listing's host account is active (suspended hosts' spots are hidden)."""
+    return exists().where(User.id == Listing.owner_id, User.status == UserStatus.ACTIVE.value)
+
+
+def bookable_clause():
+    """SQL predicate: drivers can see, save and book this listing."""
+    return and_(Listing.status == ListingStatus.ACTIVE.value, owner_active_clause())
+
+
 class ListingService:
     def __init__(
         self,
@@ -90,14 +100,20 @@ class ListingService:
         return (await self._session.execute(query)).scalar_one()
 
     async def get_public(self, listing_id: uuid.UUID) -> Listing:
-        listing = await self.get(listing_id)
-        if listing.status != ListingStatus.ACTIVE.value:
+        listing = (
+            await self._session.execute(self._full().where(Listing.id == listing_id, bookable_clause()))
+        ).scalar_one_or_none()
+        if listing is None:
             raise NotFound("Listing not found")
         return listing
 
-    async def get_owned(self, user: User, listing_id: uuid.UUID) -> Listing:
+    async def get_owned(self, user: User, listing_id: uuid.UUID, *, lock: bool = False) -> Listing:
+        """The host's own listing. Archived (deleted) listings are gone as far as the host is concerned."""
+        if lock:
+            # Row lock first: bookings take a share lock on the listing, so this waits for them.
+            await self._session.execute(select(Listing.id).where(Listing.id == listing_id).with_for_update())
         listing = await self.get(listing_id)
-        if listing.owner_id != user.id:
+        if listing.owner_id != user.id or listing.status == ListingStatus.ARCHIVED.value:
             raise NotFound("Listing not found")
         return listing
 
@@ -218,9 +234,7 @@ class ListingService:
         await self._cache.bump(LISTINGS_CACHE_NS)
 
     async def update(self, user: User, listing_id: uuid.UUID, data: ListingUpdate, rules: PlatformRules) -> Listing:
-        listing = await self.get_owned(user, listing_id)
-        if listing.status == ListingStatus.ARCHIVED.value:
-            raise Conflict("Archived listings cannot be edited", code="listing_archived")
+        listing = await self.get_owned(user, listing_id, lock=data.status == ListingStatus.ARCHIVED)
         fields = data.model_dump(exclude_unset=True, exclude={"clear_daily_cap", "status", "amenities"})
         for name, value in fields.items():
             if value is not None:
@@ -237,7 +251,29 @@ class ListingService:
         await self._commit_listing_change()
         return await self._reload(listing.id)
 
+    async def archive(self, user: User, listing_id: uuid.UUID) -> None:
+        """Delete a listing for good (soft: history and past bookings keep pointing at it)."""
+        listing = await self.get_owned(user, listing_id, lock=True)
+        await self._ensure_no_live_bookings(listing)
+        listing.status = ListingStatus.ARCHIVED.value
+        await self._commit_listing_change()
+
+    async def _ensure_no_live_bookings(self, listing: Listing) -> None:
+        live = await self._session.scalar(
+            select(func.count()).where(
+                Booking.listing_id == listing.id, Booking.status.in_([s.value for s in BLOCKING_STATUSES])
+            )
+        )
+        if live:
+            raise Conflict(
+                "This spot has upcoming or active bookings. Cancel or finish them first.",
+                code="listing_has_active_bookings",
+                details={"active_bookings": int(live)},
+            )
+
     async def _change_status(self, listing: Listing, status: ListingStatus, rules: PlatformRules) -> None:
+        if status == ListingStatus.ARCHIVED:
+            await self._ensure_no_live_bookings(listing)
         if status == ListingStatus.DRAFT and listing.status != ListingStatus.DRAFT.value:
             raise ValidationFailed("A published listing cannot go back to draft", code="invalid_status")
         if status == ListingStatus.ACTIVE:
@@ -364,10 +400,7 @@ class ListingService:
             .scalar_subquery()
         )
         columns = [Listing, distance, total_slots.label("total_slots"), cover.label("cover_key")]
-        query = select(*columns).where(
-            Listing.status == ListingStatus.ACTIVE.value,
-            func.ST_DWithin(Listing.location, point, radius_m),
-        )
+        query = select(*columns).where(bookable_clause(), func.ST_DWithin(Listing.location, point, radius_m))
         if params.kind:
             query = query.where(Listing.kind == params.kind.value)
         if params.amenities:
@@ -415,6 +448,7 @@ class ListingService:
                     "available_slots": None if available is None else int(available),
                     "cover_key": row.cover_key,
                     "rating_avg": None if listing.rating_avg is None else str(listing.rating_avg),
+                    "rating_count": listing.rating_count,
                 }
             )
         return results

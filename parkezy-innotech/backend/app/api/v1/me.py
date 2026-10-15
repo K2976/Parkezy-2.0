@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, status
+import uuid
+from typing import Annotated
 
-from app.api.deps import CurrentUser, RateLimit, ServicesDep
-from app.api.presenters import user_out
-from app.schemas.common import Message
+from fastapi import APIRouter, Depends, Query, status
+
+from app.api.deps import ContainerDep, CurrentUser, RateLimit, RulesDep, ServicesDep, page_limit
+from app.api.presenters import favorite_out, user_out
+from app.schemas.common import Message, Page
+from app.schemas.listings import FavoriteOut
 from app.schemas.users import DeleteAccountRequest, NotificationPreferences, ProfileUpdate, PushTokenRequest, UserOut
 
 router = APIRouter(prefix="/me", tags=["account"])
@@ -51,3 +55,29 @@ async def set_preferences(
 ) -> NotificationPreferences:
     changes = {channel: {k.value: v for k, v in cats.items()} for channel, cats in body.model_dump().items() if cats}
     return NotificationPreferences.model_validate(await services.notifications().set_preferences(user, changes))
+
+
+# ------------------------------------------------------------------ favourites
+@router.get("/favorites", response_model=Page[FavoriteOut])
+async def favorites(
+    user: CurrentUser,
+    services: ServicesDep,
+    rules: RulesDep,
+    c: ContainerDep,
+    cursor: str | None = None,
+    limit: Annotated[int | None, Query(gt=0)] = None,
+) -> Page[FavoriteOut]:
+    items, next_cursor = await services.favorites().list(user, cursor=cursor, limit=page_limit(rules, limit))
+    return Page[FavoriteOut](
+        items=[favorite_out(listing, fav, cover, c.storage) for listing, fav, cover in items], next_cursor=next_cursor
+    )
+
+
+@router.put("/favorites/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def save_favorite(listing_id: uuid.UUID, user: CurrentUser, services: ServicesDep) -> None:
+    await services.favorites().save(user, listing_id)
+
+
+@router.delete("/favorites/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_favorite(listing_id: uuid.UUID, user: CurrentUser, services: ServicesDep) -> None:
+    await services.favorites().remove(user, listing_id)

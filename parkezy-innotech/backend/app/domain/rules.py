@@ -35,6 +35,8 @@ class PlatformRules(BaseModel):
     search_max_results: int = Field(gt=0)
     default_page_size: int = Field(gt=0)
     max_page_size: int = Field(gt=0)
+    review_window_days: int = Field(gt=0)
+    min_payout_amount: Decimal = Field(gt=0)
 
     def commission_for(self, listing_kind: str) -> Decimal:
         return self.commission_rate_commercial if listing_kind == "commercial" else self.commission_rate_private

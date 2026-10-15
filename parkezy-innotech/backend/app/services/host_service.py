@@ -18,7 +18,9 @@ class HostDashboardService:
 
     async def _earnings_since(self, host: User, since) -> Decimal:
         query = select(func.coalesce(func.sum(LedgerEntry.amount), 0)).where(
-            LedgerEntry.user_id == host.id, LedgerEntry.account == LedgerAccount.HOST_PAYABLE.value
+            LedgerEntry.user_id == host.id,
+            LedgerEntry.account == LedgerAccount.HOST_PAYABLE.value,
+            LedgerEntry.booking_id.is_not(None),  # earnings only; payouts move money, they don't un-earn it
         )
         if since is not None:
             query = query.where(LedgerEntry.created_at >= since)
@@ -42,6 +44,7 @@ class HostDashboardService:
                 .where(
                     LedgerEntry.user_id == host.id,
                     LedgerEntry.account == LedgerAccount.HOST_PAYABLE.value,
+                    LedgerEntry.booking_id.is_not(None),
                     LedgerEntry.created_at >= now - timedelta(days=days),
                 )
                 .group_by("day")

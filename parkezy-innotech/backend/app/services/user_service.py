@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import Clock
 from app.core.errors import Conflict, Forbidden, NotFound
-from app.db.models import Booking, Listing, PushToken, User
+from app.db.models import Booking, Favorite, Listing, PushToken, SocialIdentity, User
 from app.domain.enums import BLOCKING_STATUSES, ListingStatus, UserStatus
 from app.infra.cache import Cache
 from app.services.auth_service import AuthService
@@ -60,10 +60,11 @@ class UserService:
         await self._session.execute(delete(PushToken).where(PushToken.user_id == user.id, PushToken.token == token))
         await self._session.commit()
 
-    async def delete_account(self, user: User, password: str) -> None:
+    async def delete_account(self, user: User, password: str | None) -> None:
         """Anonymise personal data and close the account. Financial records (bookings,
         ledger) are kept for tax purposes but no longer identify the person."""
-        self._auth.confirm_password(user, password)
+        if user.password_hash:
+            self._auth.confirm_password(user, password or "")
         live = list(BLOCKING_STATUSES)
         active = await self._session.scalar(
             select(func.count())
@@ -87,6 +88,9 @@ class UserService:
             .values(status=ListingStatus.ARCHIVED.value, updated_at=now)
         )
         await self._session.execute(delete(PushToken).where(PushToken.user_id == user.id))
+        # Unlinking Google/Apple means signing in with them again starts a fresh account.
+        await self._session.execute(delete(SocialIdentity).where(SocialIdentity.user_id == user.id))
+        await self._session.execute(delete(Favorite).where(Favorite.user_id == user.id))
         await self._auth.revoke_all_sessions(user.id)
         user.email = f"deleted-{uuid.uuid4().hex}@deleted.invalid"
         user.full_name = "Deleted user"
