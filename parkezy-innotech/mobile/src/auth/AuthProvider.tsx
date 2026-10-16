@@ -111,22 +111,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const ssoResult = await startSSOFlow({
       strategy: 'oauth_google',
     });
-    if (ssoResult.createdSessionId && ssoResult.setActive) {
-      await ssoResult.setActive({ session: ssoResult.createdSessionId });
+
+    const sessionId =
+      ssoResult.createdSessionId ||
+      ssoResult.signIn?.createdSessionId ||
+      ssoResult.signUp?.createdSessionId;
+
+    if (!sessionId) {
+      throw new Error('Google sign-in was cancelled or could not be completed.');
     }
-    const email = ssoResult.signUp?.emailAddress || ssoResult.signIn?.identifier;
-    const fullName = ssoResult.signUp?.firstName
-      ? `${ssoResult.signUp.firstName} ${ssoResult.signUp.lastName || ''}`.trim()
-      : undefined;
+
+    if (ssoResult.setActive) {
+      await ssoResult.setActive({ session: sessionId });
+    }
+
+    // Retrieve the Clerk session JWT
+    let idToken: string | null = null;
+    if (clerk.session) {
+      idToken = await clerk.session.getToken();
+    }
+    if (!idToken && clerk.client?.sessions) {
+      const activeSession = clerk.client.sessions.find((s) => s.id === sessionId);
+      idToken = (await activeSession?.getToken()) ?? null;
+    }
+
+    if (!idToken) {
+      throw new Error('Could not retrieve authentication token from Clerk session.');
+    }
+
+    const email =
+      ssoResult.signUp?.emailAddress ||
+      ssoResult.signIn?.identifier ||
+      clerk.user?.primaryEmailAddress?.emailAddress ||
+      clerk.session?.user?.primaryEmailAddress?.emailAddress ||
+      undefined;
+
+    const fullName =
+      (ssoResult.signUp?.firstName
+        ? `${ssoResult.signUp.firstName} ${ssoResult.signUp.lastName || ''}`.trim()
+        : undefined) ||
+      clerk.user?.fullName ||
+      clerk.session?.user?.fullName ||
+      undefined;
 
     const authRes = await authApi.social({
       provider: 'clerk',
-      id_token: ssoResult.createdSessionId || 'clerk_session',
+      id_token: idToken,
       full_name: fullName,
-      email: email || undefined,
+      email: email,
     });
     return accept(authRes);
-  }, [startSSOFlow, accept]);
+  }, [startSSOFlow, clerk, accept]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
