@@ -43,9 +43,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Local images / screenshots
-image*.png
-*.png
+# Local root screenshots
+/image*.png
+
+# Large built binaries
+*.apk
+
 
 # Next.js
 .next/
