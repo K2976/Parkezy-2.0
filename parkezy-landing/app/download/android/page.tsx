@@ -5,7 +5,9 @@ import { ArrowLeft, Download, ShieldCheck, Smartphone, CheckCircle2, QrCode } fr
 import AppBackdrop from "@/components/AppBackdrop";
 
 export default function DownloadAndroidPage() {
-  const apkDownloadUrl = process.env.NEXT_PUBLIC_APK_URL || "https://expo.dev/accounts/honours1234567890875432s-team/projects/parkezy/builds/3232cc2c-311a-47ae-b32d-c10534ea90d6";
+  const cdnApkUrl = "https://expo.dev/artifacts/eas/4iKqrtysoRMsMXk8RLyXoCH5ogVM31_xXCiVOgJUcmg.apk";
+  const localApkUrl = "/downloads/parkezy.apk";
+  const apkDownloadUrl = process.env.NEXT_PUBLIC_APK_URL || cdnApkUrl;
 
   return (
     <div className="min-h-screen bg-[#FAF9FD] relative overflow-hidden flex flex-col justify-between text-[#1C1924]">
@@ -54,20 +56,43 @@ export default function DownloadAndroidPage() {
             <p className="text-xs text-slate-500 mt-1">Package: com.parkezy.app • Android 8.0+</p>
           </div>
 
-          {/* Download Button */}
-          <a
-            href={apkDownloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-[#6E5BC4] hover:bg-[#5F4DB3] transition-all text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-[#6E5BC4]/30 flex items-center justify-center gap-3 text-base active:scale-98"
-          >
-            <Download size={20} />
-            <span>Download APK Directly</span>
-          </a>
+          {/* Download Buttons */}
+          <div className="space-y-3">
+            <a
+              href={apkDownloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-[#6E5BC4] hover:bg-[#5F4DB3] transition-all text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-[#6E5BC4]/30 flex items-center justify-center gap-3 text-base active:scale-98"
+            >
+              <Download size={20} />
+              <span>Download APK Directly</span>
+            </a>
+
+            <a
+              href={localApkUrl}
+              download="parkezy.apk"
+              className="w-full bg-white hover:bg-slate-50 border border-slate-200 text-[#1C1924] font-semibold py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm transition-colors"
+            >
+              <Download size={16} className="text-[#6E5BC4]" />
+              <span>Direct Local Mirror (~137 MB)</span>
+            </a>
+          </div>
 
           <div className="flex items-center justify-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3">
             <ShieldCheck size={16} className="text-emerald-600" />
-            <span>Verified safe build • Signed package</span>
+            <span>Verified safe build • Signed package • Android 8.0+</span>
+          </div>
+
+          <div className="pt-2 text-xs text-slate-500">
+            <a
+              href="https://expo.dev/accounts/honours1234567890875432s-team/projects/parkezy/builds/3232cc2c-311a-47ae-b32d-c10534ea90d6"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#6E5BC4] underline underline-offset-2 flex items-center justify-center gap-1.5"
+            >
+              <QrCode size={14} />
+              <span>Scan QR Code or view build on Expo EAS</span>
+            </a>
           </div>
         </div>
 

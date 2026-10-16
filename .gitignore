@@ -46,6 +46,9 @@ yarn-error.log*
 # Local root screenshots
 /image*.png
 
+# Large built binaries
+*.apk
+
 
 # Next.js
 .next/
