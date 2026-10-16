@@ -14,26 +14,41 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://parkezy-api.onrender.com",
-        "EXPO_PUBLIC_API_TIMEOUT_MS": "15000",
+        "EXPO_PUBLIC_API_TIMEOUT_MS": "60000",
         "EXPO_PUBLIC_DEFAULT_LATITUDE": "12.9716",
         "EXPO_PUBLIC_DEFAULT_LONGITUDE": "77.5946",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@parkezy.com",
-        "EXPO_PUBLIC_PRIVACY_URL": "https://parkezy.com/privacy",
-        "EXPO_PUBLIC_TERMS_URL": "https://parkezy.com/terms",
+        "EXPO_PUBLIC_PRIVACY_URL": "https://parkezy-api.onrender.com/legal/privacy",
+        "EXPO_PUBLIC_TERMS_URL": "https://parkezy-api.onrender.com/legal/terms",
         "EXPO_PUBLIC_OSM_TILE_URL": "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
         "APP_DISPLAY_NAME": "Parkezy",
         "APP_SCHEME": "parkezy",
         "IOS_BUNDLE_ID": "com.parkezy.app",
         "ANDROID_PACKAGE": "com.parkezy.app",
-        "GOOGLE_MAPS_ANDROID_API_KEY": "AIzaSyCmsDnKOa0dozm1LD0NbivVF6GQmqidUcM",
-        "GOOGLE_MAPS_API_KEY": "AIzaSyCmsDnKOa0dozm1LD0NbivVF6GQmqidUcM",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCmsDnKOa0dozm1LD0NbivVF6GQmqidUcM",
+        "EAS_PROJECT_ID": "898e16f3-64dd-4707-8772-0d576d003268",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZXhjaXRpbmctc2F3Zmx5LTMwNzkuY2xlcmsuYWNjb3VudHMuZGV2JA"
+      },
+      "environment": "preview"
+    },
+    "production": {
+      "autoIncrement": true,
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://parkezy-api.onrender.com",
+        "EXPO_PUBLIC_API_TIMEOUT_MS": "60000",
+        "EXPO_PUBLIC_DEFAULT_LATITUDE": "12.9716",
+        "EXPO_PUBLIC_DEFAULT_LONGITUDE": "77.5946",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@parkezy.com",
+        "EXPO_PUBLIC_PRIVACY_URL": "https://parkezy-api.onrender.com/legal/privacy",
+        "EXPO_PUBLIC_TERMS_URL": "https://parkezy-api.onrender.com/legal/terms",
+        "EXPO_PUBLIC_OSM_TILE_URL": "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
+        "APP_DISPLAY_NAME": "Parkezy",
+        "APP_SCHEME": "parkezy",
+        "IOS_BUNDLE_ID": "com.parkezy.app",
+        "ANDROID_PACKAGE": "com.parkezy.app",
         "EAS_PROJECT_ID": "898e16f3-64dd-4707-8772-0d576d003268",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZXhjaXRpbmctc2F3Zmx5LTMwNzkuY2xlcmsuYWNjb3VudHMuZGV2JA"
       }
-    },
-    "production": {
-      "autoIncrement": true
     }
   },
   "submit": {

@@ -14,8 +14,9 @@ services:
       # One web worker leaves room for the Celery worker inside the free plan's 512 MB.
       - key: WEB_CONCURRENCY
         value: "1"
+      # production hides /docs and /openapi.json, and refuses short secrets or CORS_ORIGINS=*.
       - key: APP_ENV
-        value: staging
+        value: production
       - key: APP_NAME
         value: Parkezy
       - key: API_PUBLIC_URL
@@ -33,8 +34,9 @@ services:
         value: parkezy://
       - key: TRUST_FORWARDED_FOR
         value: "true"
+      # Browsers only; the mobile app is not subject to CORS.
       - key: CORS_ORIGINS
-        value: "*"
+        value: https://parkezy-landing.vercel.app
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL

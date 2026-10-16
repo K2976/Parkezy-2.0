@@ -3,80 +3,38 @@ import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+type Status = "healthy" | "unhealthy" | "unreachable";
+
+// Public endpoint: report up/down only. Database user, version and URLs stay out of the response.
 export async function GET() {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://parkezy-api.onrender.com";
-  let backendStatus: any = { status: "unknown" };
 
+  let backend: Status = "unreachable";
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(`${backendUrl}/health/ready`, {
-      signal: controller.signal,
+      signal: AbortSignal.timeout(4000),
       cache: "no-store",
     });
-    clearTimeout(timeout);
-    if (res.ok) {
-      backendStatus = {
-        status: "healthy",
-        url: backendUrl,
-        response: await res.json(),
-      };
-    } else {
-      backendStatus = {
-        status: "unhealthy",
-        statusCode: res.status,
-        url: backendUrl,
-      };
-    }
-  } catch (err: any) {
-    backendStatus = {
-      status: "unreachable",
-      url: backendUrl,
-      error: err?.message,
-    };
+    backend = res.ok ? "healthy" : "unhealthy";
+  } catch (err) {
+    console.error("health: backend check failed", err);
   }
 
-  let dbStatus: any = { status: "unknown" };
+  let database: Status = "unreachable";
   try {
-    const result = await sql`
-      SELECT 
-        current_database() as database,
-        split_part(version(), ' ', 2) as postgres_version,
-        NOW() as server_time,
-        current_user as db_user
-    `;
-    dbStatus = {
-      status: "healthy",
-      service: "Neon Postgres",
-      branch: process.env.NEON_BRANCH || "production",
-      database: result[0]?.database,
-      version: result[0]?.postgres_version,
-      timestamp: result[0]?.server_time,
-      user: result[0]?.db_user,
-    };
-  } catch (error: any) {
-    dbStatus = {
-      status: "error",
-      service: "Neon Postgres",
-      error: error?.message || "Database connection failed",
-    };
+    await sql`SELECT 1`;
+    database = "healthy";
+  } catch (err) {
+    console.error("health: database check failed", err);
   }
 
-  const overallHealthy = dbStatus.status === "healthy" && backendStatus.status === "healthy";
-
+  const healthy = backend === "healthy" && database === "healthy";
   return NextResponse.json(
     {
-      status: overallHealthy ? "healthy" : "degraded",
+      status: healthy ? "healthy" : "degraded",
       timestamp: new Date().toISOString(),
-      services: {
-        frontend: {
-          platform: "Vercel",
-          status: "healthy",
-        },
-        backend: backendStatus,
-        database: dbStatus,
-      },
+      services: { frontend: "healthy", backend, database },
     },
-    { status: overallHealthy ? 200 : 207 }
+    { status: healthy ? 200 : 503 }
   );
 }
