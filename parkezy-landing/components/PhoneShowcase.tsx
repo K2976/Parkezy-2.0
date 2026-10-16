@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import PhoneFrame from "./PhoneFrame";
 import Hero from "./Hero";
 import FeatureSection from "./FeatureSection";
@@ -23,19 +25,19 @@ const features = [
       "Pinpoint guaranteed parking near your destination before you even start driving. Filter in real-time by covered bays, EV charging, CCTV security, and instant entry.",
   },
   {
-    label: "Instant Booking",
+    label: "Booking",
     title: "Guaranteed Hold & 1-Click UPI Payment",
     description:
       "Select your exact vehicle size and parking window. Lock your slot instantly with an automated 10-minute hold and check out seamlessly via UPI, PhonePe, or cards.",
   },
   {
-    label: "Smart Access",
+    label: "Access",
     title: "Dynamic QR & Offline Keypad PIN",
     description:
       "Never worry about poor cellular reception in underground basements. Scan rotating dynamic QR codes at boom barriers or enter your 6-digit offline PIN directly into the gate keypad.",
   },
   {
-    label: "Host Monetization",
+    label: "Host",
     title: "Turn Empty Driveways into Daily Income",
     description:
       "List private driveways, residential bays, or commercial lots in minutes. Toggle slot availability live, track occupancy rates, and enjoy automated direct bank payouts.",
@@ -49,7 +51,42 @@ export default function PhoneShowcase() {
   const phoneContainerRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef(0);
   const [activeScreen, setActiveScreen] = useState(0);
+  const [mobileScreen, setMobileScreen] = useState(0);
+  const [direction, setDirection] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  const switchMobileScreen = (newIndex: number) => {
+    if (newIndex === mobileScreen) return;
+    setDirection(newIndex > mobileScreen ? 1 : -1);
+    setMobileScreen(newIndex);
+  };
+
+  const nextSlide = useCallback(() => {
+    setDirection(1);
+    setMobileScreen((prev) => (prev + 1) % features.length);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setDirection(-1);
+    setMobileScreen((prev) => (prev - 1 + features.length) % features.length);
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diffX = e.changedTouches[0].clientX - touchStartX.current;
+    if (diffX > 40) {
+      prevSlide();
+    } else if (diffX < -40) {
+      nextSlide();
+    }
+    touchStartX.current = null;
+  };
+
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -140,53 +177,103 @@ export default function PhoneShowcase() {
   }, [isMobile]);
 
   // ═══════════════════════════════════════════════════════════
-  // Mobile Fallback: stacked inline layout
+  // Mobile: Interactive Animated Feature Slider
   // ═══════════════════════════════════════════════════════════
   if (isMobile) {
+    const currentFeature = features[mobileScreen];
     return (
-      <div className="px-6">
+      <div className="px-5">
         {/* Mobile Hero */}
-        <section className="min-h-screen flex flex-col justify-center pt-28 pb-12">
+        <section className="pt-24 pb-8 flex flex-col justify-center">
           <Hero />
-          <div className="mt-12 mx-auto w-[295px]">
-            <PhoneFrame activeScreen={0} className="w-full">
+        </section>
+
+        {/* Interactive Feature Slider Section */}
+        <section className="py-12 border-t border-slate-100 flex flex-col items-center">
+          <div className="text-center max-w-sm mb-6">
+            <span className="text-xs font-bold text-[#6E5BC4] uppercase tracking-widest block mb-2">
+              App Showcase
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#1C1924] tracking-tight">
+              Experience Parkezy
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Swipe or tap tabs below to preview live features
+            </p>
+          </div>
+
+          {/* Text-based Slide Bar with Underline Indicator */}
+          <div className="w-full max-w-sm mb-8 flex items-center justify-between border-b border-slate-200">
+            {features.map((f, i) => {
+              const active = mobileScreen === i;
+              return (
+                <button
+                  key={f.label}
+                  onClick={() => switchMobileScreen(i)}
+                  className={`relative flex-1 pb-3 text-center text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap px-1 ${
+                    active
+                      ? "text-[#6E5BC4] font-bold"
+                      : "text-slate-400 hover:text-slate-700"
+                  }`}
+                >
+                  <span className="whitespace-nowrap">{f.label}</span>
+                  {active && (
+                    <motion.div
+                      layoutId="mobileActiveTabLine"
+                      className="absolute bottom-[-1px] left-1 right-1 h-[2.5px] bg-[#6E5BC4] rounded-full"
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Phone Frame with Swipeable Touch Controls */}
+          <div
+            className="relative mx-auto w-[270px] sm:w-[290px] touch-pan-y"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Prev Arrow */}
+            <button
+              onClick={prevSlide}
+              aria-label="Previous screen"
+              className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/95 border border-slate-200 text-slate-700 shadow-md flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            {/* Next Arrow */}
+            <button
+              onClick={nextSlide}
+              aria-label="Next screen"
+              className="absolute -right-4 sm:-right-5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/95 border border-slate-200 text-slate-700 shadow-md flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
+            >
+              <ChevronRight size={18} />
+            </button>
+
+            <PhoneFrame activeScreen={mobileScreen} direction={direction} className="w-full">
               <PhoneScreenExplore />
               <PhoneScreenBooking />
               <PhoneScreenAccess />
               <PhoneScreenHost />
             </PhoneFrame>
           </div>
-        </section>
 
-        {/* Mobile Features */}
-        {features.map((f, i) => {
-          const screens = [
-            <PhoneScreenExplore key="e" />,
-            <PhoneScreenBooking key="b" />,
-            <PhoneScreenAccess key="a" />,
-            <PhoneScreenHost key="h" />,
-          ];
-          return (
-            <section key={f.title} className="py-20 border-t border-slate-100 text-left">
-              <div className="mb-8">
-                <span className="text-xs font-bold text-[#6E5BC4] uppercase tracking-widest block mb-2">
-                  {f.label}
-                </span>
-                <h3 className="text-2xl sm:text-3xl font-black text-[#1C1924] mb-3 tracking-tight leading-snug">
-                  {f.title}
-                </h3>
-                <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-                  {f.description}
-                </p>
-              </div>
-              <div className="mx-auto w-[295px]">
-                <PhoneFrame activeScreen={0} className="w-full">
-                  {[screens[i]]}
-                </PhoneFrame>
-              </div>
-            </section>
-          );
-        })}
+          {/* Feature Details: Clean Normal Text (No Box/Card) */}
+          <div className="w-full max-w-sm mt-7 px-2 text-center">
+            <span className="text-[11px] font-bold text-[#6E5BC4] uppercase tracking-wider block mb-1.5">
+              {currentFeature.label} • 0{mobileScreen + 1} / 0{features.length}
+            </span>
+            <h3 className="text-xl font-bold text-[#1C1924] mb-2 leading-snug">
+              {currentFeature.title}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+              {currentFeature.description}
+            </p>
+          </div>
+        </section>
       </div>
     );
   }

@@ -12,7 +12,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
-          className="text-6xl md:text-7xl lg:text-8xl font-black text-[#1C1924] leading-[0.92] tracking-tight"
+          className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[#1C1924] leading-[0.96] md:leading-[0.92] tracking-tight"
         >
           Park Smarter.
         </motion.h1>
@@ -20,7 +20,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.35 }}
-          className="text-6xl md:text-7xl lg:text-8xl font-black text-[#6E5BC4] leading-[0.92] tracking-tight mt-1 md:mt-2"
+          className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[#6E5BC4] leading-[0.96] md:leading-[0.92] tracking-tight mt-1 md:mt-2"
         >
           Arrive Faster.
         </motion.h1>
@@ -31,7 +31,7 @@ export default function Hero() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.5 }}
-        className="text-lg md:text-xl text-slate-600 max-w-lg mb-8 leading-relaxed font-normal"
+        className="text-base sm:text-lg md:text-xl text-slate-600 max-w-lg mb-8 leading-relaxed font-normal"
       >
         Never circle the block again. Discover live nearby parking spots, reserve your bay in 2 taps, and unlock gate barriers with dynamic QR codes or offline PINs.
       </motion.p>
@@ -41,7 +41,7 @@ export default function Hero() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.65 }}
-        className="flex flex-wrap items-center gap-4"
+        className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4"
       >
         <a
           href="#download"

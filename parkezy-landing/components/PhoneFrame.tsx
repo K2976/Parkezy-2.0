@@ -22,9 +22,10 @@ interface PhoneFrameProps {
   activeScreen: number;
   children: ReactNode[];
   className?: string;
+  direction?: number;
 }
 
-export default function PhoneFrame({ activeScreen, children, className = "" }: PhoneFrameProps) {
+export default function PhoneFrame({ activeScreen, children, className = "", direction = 0 }: PhoneFrameProps) {
   return (
     <div
       className={`relative inline-block align-middle leading-none ${className}`}
@@ -41,13 +42,29 @@ export default function PhoneFrame({ activeScreen, children, className = "" }: P
           borderRadius: `${RADIUS_H}% / ${RADIUS_V}%`,
         }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={activeScreen}
-            initial={{ opacity: 0, scale: 0.98, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98, y: -10 }}
-            transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+            custom={direction}
+            variants={{
+              enter: (d: number) => ({
+                opacity: 0,
+                x: d !== 0 ? (d > 0 ? 40 : -40) : 0,
+                y: d === 0 ? 10 : 0,
+                scale: 0.98,
+              }),
+              center: { opacity: 1, x: 0, y: 0, scale: 1 },
+              exit: (d: number) => ({
+                opacity: 0,
+                x: d !== 0 ? (d > 0 ? -40 : 40) : 0,
+                y: d === 0 ? -10 : 0,
+                scale: 0.98,
+              }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="absolute inset-0"
           >
             <div 

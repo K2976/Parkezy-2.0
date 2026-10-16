@@ -13,7 +13,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.1.44:8000",
+        "EXPO_PUBLIC_API_URL": "https://parkezy-api.onrender.com",
         "EXPO_PUBLIC_API_TIMEOUT_MS": "15000",
         "EXPO_PUBLIC_DEFAULT_LATITUDE": "12.9716",
         "EXPO_PUBLIC_DEFAULT_LONGITUDE": "77.5946",

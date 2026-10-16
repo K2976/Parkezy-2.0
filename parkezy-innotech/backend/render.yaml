@@ -2,16 +2,21 @@ services:
   - type: web
     name: parkezy-api
     runtime: docker
+    rootDir: parkezy-innotech/backend
     dockerfilePath: Dockerfile
     dockerContext: .
     plan: free
     region: oregon
-    healthCheckPath: /healthz
+    healthCheckPath: /health/ready
     envVars:
       - key: APP_ENV
-        value: production
+        value: staging
       - key: APP_NAME
         value: Parkezy
+      - key: API_PUBLIC_URL
+        value: https://parkezy-api.onrender.com
+      - key: EMAIL_FROM
+        value: no-reply@parkezy.com
       - key: APP_DEEP_LINK_BASE
         value: parkezy://
       - key: TRUST_FORWARDED_FOR
