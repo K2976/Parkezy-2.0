@@ -36,13 +36,13 @@ services:
       - key: CORS_ORIGINS
         value: "*"
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_kewAUW2Mmnv1@ep-soft-dream-b4hu6x1q-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+        sync: false
       - key: REDIS_URL
-        value: redis://default:7TSn559dq1m9Bwea2B58XmHuqEAjE0zz@sky-flavor-meal-82500.db.redis.io:16924/0
+        sync: false
       - key: JWT_SECRET
-        value: 1oLLsgVBOGd5oH1gwGicnddZe7tSgO_H3JooieECExe_61_ks4dymS1AArJZPjNC
+        sync: false
       - key: ACCESS_CODE_SECRET
-        value: WlqcjaQ4aARZCYFwGZmswlRPaZLVLRqmEMI9ANbDHE3j-q_xe21sGn_d9VfOvYS2
+        sync: false
       - key: CLERK_PUBLISHABLE_KEY
         value: pk_test_ZXhjaXRpbmctc2F3Zmx5LTMwNzkuY2xlcmsuYWNjb3VudHMuZGV2JA
       - key: CLERK_ISSUER
@@ -54,18 +54,18 @@ services:
       - key: RAZORPAY_KEY_ID
         value: rzp_test_ToZcVVw8BtcJPq
       - key: RAZORPAY_KEY_SECRET
-        value: 3SHoVcvD6sYX1Ya2AgiFKTl9
+        sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
-        value: whsec_ace2968025b926d0311b04ddf60dcd358bf2fea3
+        sync: false
       - key: S3_ENDPOINT_URL
         value: https://s3.us-east-005.backblazeb2.com
       - key: S3_REGION
         value: us-east-005
-      - key: S3_ACCESS_KEY_ID
-        value: "0056371569c9c4a0000000003"
-      - key: S3_SECRET_ACCESS_KEY
-        value: K00549LyUATSwAI4idCY4JVL2Kkko+g
       - key: S3_BUCKET
         value: parkezy-v2
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
       - key: GOOGLE_MAPS_API_KEY
-        value: AIzaSyCmsDnKOa0dozm1LD0NbivVF6GQmqidUcM
+        sync: false
