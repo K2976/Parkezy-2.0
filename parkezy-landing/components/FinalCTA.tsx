@@ -98,22 +98,25 @@ export default function FinalCTA() {
       </div>
 
       {/* Footer Navigation */}
-      <footer className="mt-20 pt-12 border-t border-slate-100 max-w-7xl mx-auto px-6 md:px-8 text-slate-500 text-sm">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-12">
-          <div className="flex flex-col text-left">
+      <footer className="mt-24 sm:mt-28 md:mt-32 pt-10 md:pt-12 border-t border-slate-100 max-w-7xl mx-auto px-6 md:px-8 text-slate-500 text-sm">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 pb-10 md:pb-12 text-center md:text-left">
+          {/* Brand */}
+          <div className="flex flex-col items-center md:items-start">
             <span className="text-xl font-black text-slate-900 tracking-tight">Parkezy</span>
-            <span className="text-[10px] font-bold text-[#6E5BC4] tracking-wider uppercase">Smart Parking</span>
+            <span className="text-[10px] font-bold text-[#6E5BC4] tracking-wider uppercase mt-0.5">Smart Parking</span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-8 text-xs font-semibold text-slate-600">
-            <a href="#features" className="hover:text-[#6E5BC4] transition-colors">Features</a>
-            <a href="#pass" className="hover:text-[#6E5BC4] transition-colors">Offline Pass</a>
-            <a href="#hosts" className="hover:text-[#6E5BC4] transition-colors">Host Portal</a>
-            <a href="/privacy" className="hover:text-[#6E5BC4] transition-colors">Privacy Policy</a>
-            <a href="/terms" className="hover:text-[#6E5BC4] transition-colors">Terms of Service</a>
-          </div>
+          {/* Links */}
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs font-semibold text-slate-600">
+            <a href="#features" className="hover:text-[#6E5BC4] transition-colors py-1">Features</a>
+            <a href="#pass" className="hover:text-[#6E5BC4] transition-colors py-1">Offline Pass</a>
+            <a href="#hosts" className="hover:text-[#6E5BC4] transition-colors py-1">Host Portal</a>
+            <a href="/privacy" className="hover:text-[#6E5BC4] transition-colors py-1">Privacy Policy</a>
+            <a href="/terms" className="hover:text-[#6E5BC4] transition-colors py-1">Terms of Service</a>
+          </nav>
 
-          <p className="text-xs text-slate-400">
+          {/* Copyright */}
+          <p className="text-xs text-slate-400 text-center md:text-right">
             © 2026 Parkezy Technologies Pvt Ltd. All rights reserved.
           </p>
         </div>
@@ -121,7 +124,7 @@ export default function FinalCTA() {
 
       {/* Watermark Logo */}
       <div className="w-full overflow-hidden flex justify-center items-end pointer-events-none select-none">
-        <h1 className="text-[34vw] md:text-[24vw] font-black text-[#C4B5EE] leading-none tracking-tighter text-center mb-[-5vw]">
+        <h1 className="text-[26vw] md:text-[22vw] font-black text-slate-100 leading-none tracking-tighter text-center mb-[-4vw]">
           Parkezy
         </h1>
       </div>
