@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/downloads/parkezy.apk",
-        destination: "https://expo.dev/artifacts/eas/4iKqrtysoRMsMXk8RLyXoCH5ogVM31_xXCiVOgJUcmg.apk",
+        destination: "https://expo.dev/artifacts/eas/h3_M2O2urTM3rgidRnMwsl4ctKyK4FA3lB7rEERdp-8.apk",
         permanent: false,
       },
     ];
