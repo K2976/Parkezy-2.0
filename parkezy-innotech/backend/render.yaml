@@ -2,6 +2,7 @@ services:
   - type: web
     name: parkezy-api
     runtime: docker
+    rootDir: parkezy-innotech/backend
     dockerfilePath: Dockerfile
     dockerContext: .
     plan: free

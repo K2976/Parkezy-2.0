@@ -1,0 +1,12 @@
+FROM python:3.13-slim AS base
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+COPY --from=ghcr.io/astral-sh/uv:0.5.31 /uv /usr/local/bin/uv
+WORKDIR /app
+COPY parkezy-innotech/backend/pyproject.toml parkezy-innotech/backend/uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+COPY parkezy-innotech/backend/ .
+ENV PATH="/app/.venv/bin:$PATH"
+RUN useradd --create-home app && chown -R app /app
+USER app
+EXPOSE 8000
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --proxy-headers --no-access-log"]

@@ -1,0 +1,16 @@
+.git
+node_modules
+parkezy-landing
+parkezy-mobile
+parkezy-innotech/mobile
+parkezy-innotech/frontend
+parkezy-innotech/docs
+parkezy-innotech/backend/.venv
+parkezy-innotech/backend/.pytest_cache
+parkezy-innotech/backend/.ruff_cache
+parkezy-innotech/backend/__pycache__
+parkezy-innotech/backend/tests
+parkezy-innotech/backend/scripts
+parkezy-innotech/backend/.env
+parkezy-innotech/backend/.env.*
+!parkezy-innotech/backend/.env.example
