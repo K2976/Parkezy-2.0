@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -201,21 +202,28 @@ export default function PhoneShowcase() {
             </p>
           </div>
 
-          {/* Interactive Feature Tabs */}
-          <div className="w-full max-w-sm mb-6 flex items-center justify-between gap-1 p-1 bg-slate-100 rounded-2xl">
+          {/* Text-based Slide Bar with Underline Indicator */}
+          <div className="w-full max-w-sm mb-8 flex items-center justify-between border-b border-slate-200">
             {features.map((f, i) => {
               const active = mobileScreen === i;
               return (
                 <button
                   key={f.label}
                   onClick={() => switchMobileScreen(i)}
-                  className={`flex-1 py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
+                  className={`relative flex-1 pb-3 text-center text-xs sm:text-sm font-semibold transition-colors ${
                     active
-                      ? "bg-white text-[#6E5BC4] shadow-xs"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "text-[#6E5BC4] font-bold"
+                      : "text-slate-400 hover:text-slate-700"
                   }`}
                 >
-                  {f.label}
+                  <span>{f.label}</span>
+                  {active && (
+                    <motion.div
+                      layoutId="mobileActiveTabLine"
+                      className="absolute bottom-[-1px] left-2 right-2 h-[2.5px] bg-[#6E5BC4] rounded-full"
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                    />
+                  )}
                 </button>
               );
             })}
@@ -253,40 +261,17 @@ export default function PhoneShowcase() {
             </PhoneFrame>
           </div>
 
-          {/* Animated Feature Details Card */}
-          <div className="w-full max-w-sm mt-8 bg-white border border-slate-200 rounded-2xl p-5 text-left transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-[#6E5BC4] uppercase tracking-wider">
-                {currentFeature.label}
-              </span>
-              <span className="text-[11px] font-semibold text-slate-400">
-                0{mobileScreen + 1} / 0{features.length}
-              </span>
-            </div>
-
-            <h3 className="text-lg font-bold text-[#1C1924] mb-2 leading-snug">
+          {/* Feature Details: Clean Normal Text (No Box/Card) */}
+          <div className="w-full max-w-sm mt-7 px-2 text-center">
+            <span className="text-[11px] font-bold text-[#6E5BC4] uppercase tracking-wider block mb-1.5">
+              {currentFeature.label} • 0{mobileScreen + 1} / 0{features.length}
+            </span>
+            <h3 className="text-xl font-bold text-[#1C1924] mb-2 leading-snug">
               {currentFeature.title}
             </h3>
-
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
               {currentFeature.description}
             </p>
-
-            {/* Dots navigation */}
-            <div className="flex items-center justify-center gap-2 mt-5 pt-4 border-t border-slate-100">
-              {features.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => switchMobileScreen(i)}
-                  aria-label={`Go to slide ${i + 1}`}
-                  className={`h-2 rounded-full transition-all ${
-                    mobileScreen === i
-                      ? "w-7 bg-[#6E5BC4]"
-                      : "w-2 bg-slate-200 hover:bg-slate-300"
-                  }`}
-                />
-              ))}
-            </div>
           </div>
         </section>
       </div>
