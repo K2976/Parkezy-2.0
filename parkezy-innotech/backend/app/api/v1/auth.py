@@ -70,6 +70,7 @@ async def social_sign_in(
         id_token=body.id_token,
         nonce=body.nonce,
         full_name=body.full_name,
+        email=body.email,
         user_agent=request.headers.get("user-agent"),
     )
     if not created:

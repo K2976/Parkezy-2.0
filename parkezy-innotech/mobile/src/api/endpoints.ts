@@ -58,6 +58,8 @@ export const authApi = {
     api.request<{ message: string }>('/v1/auth/reset-password', { method: 'POST', body, auth: false }),
   changePassword: (body: { current_password: string; new_password: string }) =>
     api.request<{ message: string }>('/v1/auth/change-password', { method: 'POST', body }),
+  social: (body: { provider: 'google' | 'apple' | 'clerk'; id_token: string; nonce?: string | null; full_name?: string | null; email?: string | null }) =>
+    api.request<AuthResponse>('/v1/auth/social', { method: 'POST', body, auth: false }),
 };
 
 export const meApi = {

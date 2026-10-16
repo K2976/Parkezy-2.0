@@ -26,6 +26,12 @@ os.environ["PAYMENT_PROVIDER"] = "offline"
 os.environ["PUSH_PROVIDER"] = "none"
 os.environ["CORS_ORIGINS"] = ""
 os.environ["ADMIN_EMAILS"] = "admin@test.parkezy.dev"
+os.environ["S3_ENDPOINT_URL"] = "http://localhost:8333"
+os.environ["S3_PUBLIC_ENDPOINT_URL"] = "http://localhost:8333"
+os.environ["S3_REGION"] = "us-east-1"
+os.environ["S3_ACCESS_KEY_ID"] = "parkezy-local"
+os.environ["S3_SECRET_ACCESS_KEY"] = "parkezy-local-secret"
+os.environ["S3_BUCKET"] = "parkezy-media-test"
 
 from app.core.config import Settings  # noqa: E402
 
@@ -34,7 +40,6 @@ TEST_DB = f"{make_url(BASE.database_url).database}_test"
 TEST_URL = make_url(BASE.database_url).set(database=TEST_DB).render_as_string(hide_password=False)
 os.environ["DATABASE_URL"] = TEST_URL
 os.environ["REDIS_URL"] = BASE.redis_url.rsplit("/", 1)[0] + "/15"
-os.environ["S3_BUCKET"] = f"{BASE.s3_bucket}-test"
 
 
 def make_settings(**overrides) -> Settings:

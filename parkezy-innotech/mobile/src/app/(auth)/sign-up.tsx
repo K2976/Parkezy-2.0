@@ -4,17 +4,30 @@ import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
-import { Banner, Button, Card, Screen, Text, TextField } from '@/ui/components';
+import { Banner, Button, Card, Divider, Screen, Text, TextField } from '@/ui/components';
 import { fonts, spacing, useTheme } from '@/ui/theme';
 
 export default function SignUp() {
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
   const { colors } = useTheme();
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', password: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const handleGoogleSignUp = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Google sign-up could not be completed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const submit = async () => {
     setError(null);
@@ -81,6 +94,14 @@ export default function SignUp() {
           onPress={submit}
           loading={loading}
           disabled={!form.full_name || !form.email || form.password.length < 8}
+        />
+        <Divider />
+        <Button
+          title="Continue with Google"
+          icon="logo-google"
+          kind="secondary"
+          onPress={handleGoogleSignUp}
+          loading={googleLoading}
         />
         </Card>
         <Text variant="small" style={{ marginTop: spacing.lg, textAlign: 'center' }}>

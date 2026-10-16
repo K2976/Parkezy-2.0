@@ -4,16 +4,17 @@ import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
-import { Banner, Button, Card, IconOrb, Row, Screen, Text, TextField } from '@/ui/components';
+import { Banner, Button, Card, Divider, IconOrb, Row, Screen, Text, TextField } from '@/ui/components';
 import { fonts, spacing, useTheme } from '@/ui/theme';
 
 export default function SignIn() {
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const submit = async () => {
     setError(null);
@@ -24,6 +25,18 @@ export default function SignIn() {
       setError(e instanceof ApiError ? e.message : 'Could not sign in');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Google sign-in could not be completed');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -67,6 +80,14 @@ export default function SignIn() {
           />
           <Button title="Sign in" icon="arrow-forward" onPress={submit} loading={loading} disabled={!email || !password} />
           <Button title="Forgot password?" kind="ghost" size="sm" onPress={() => router.push('/forgot-password')} />
+          <Divider />
+          <Button
+            title="Continue with Google"
+            icon="logo-google"
+            kind="secondary"
+            onPress={handleGoogleSignIn}
+            loading={googleLoading}
+          />
         </Card>
 
         <Row style={{ justifyContent: 'center', marginTop: spacing.xl }} gap={spacing.xs}>

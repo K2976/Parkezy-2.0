@@ -1,19 +1,15 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import MapView, { Circle, Marker, UrlTile } from 'react-native-maps';
+import { Platform, StyleSheet, View } from 'react-native';
+import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import type { ListingSearchItem } from '@/api/types';
-import { env } from '@/config/env';
 import { Text } from '@/ui/components';
 import { fonts, radius, useTheme } from '@/ui/theme';
 import { money } from '@/utils/format';
 
 export type MapRegion = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
 export type ParkingMapHandle = { animateTo: (region: MapRegion) => void };
-
-/** OpenStreetMap tile server URL template */
-const OSM_URL_TEMPLATE = env.osmTileUrl;
 
 type Props = {
   initialRegion: MapRegion;
@@ -26,7 +22,7 @@ type Props = {
   onSelect: (item: ListingSearchItem) => void;
 };
 
-/** Native map with OpenStreetMap tiles, clay price pins, and user standing navigation arrow. */
+/** Native map with Google Maps on Android, clay price pins, and user standing navigation arrow. */
 export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMap(
   { initialRegion, items, showsUserLocation, userLocation, zoneRadiusM, onRegionChange, onSelect },
   ref,
@@ -37,19 +33,13 @@ export const ParkingMap = forwardRef<ParkingMapHandle, Props>(function ParkingMa
   return (
     <MapView
       ref={map}
+      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
       style={StyleSheet.absoluteFill}
       initialRegion={initialRegion}
-      mapType="none"
+      mapType="standard"
       showsUserLocation={showsUserLocation && !userLocation}
       onRegionChangeComplete={onRegionChange}
       accessibilityLabel="Map of parking spots">
-      <UrlTile
-        urlTemplate={OSM_URL_TEMPLATE}
-        maximumZ={19}
-        flipY={false}
-        tileSize={256}
-        zIndex={1}
-      />
       {userLocation && zoneRadiusM ? (
         <Circle
           center={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}

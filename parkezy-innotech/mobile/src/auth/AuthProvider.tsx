@@ -1,3 +1,4 @@
+import { useClerk, useSSO } from '@clerk/expo';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -13,6 +14,7 @@ type AuthContextValue = {
   status: Status;
   user: User | null;
   signIn: (email: string, password: string) => Promise<User>;
+  signInWithGoogle: () => Promise<User>;
   signUp: (input: { email: string; password: string; full_name: string; phone?: string | null }) => Promise<User>;
   signOut: () => Promise<void>;
   setUser: (user: User) => void;
@@ -91,6 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [clearSession, storeTokens]);
 
+  const { startSSOFlow } = useSSO();
+  const clerk = useClerk();
+
   const accept = useCallback(
     async (response: AuthResponse) => {
       queryClient.clear();
@@ -102,21 +107,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient, storeTokens],
   );
 
+  const signInWithGoogle = useCallback(async (): Promise<User> => {
+    const ssoResult = await startSSOFlow({
+      strategy: 'oauth_google',
+    });
+    if (ssoResult.createdSessionId && ssoResult.setActive) {
+      await ssoResult.setActive({ session: ssoResult.createdSessionId });
+    }
+    const email = ssoResult.signUp?.emailAddress || ssoResult.signIn?.identifier;
+    const fullName = ssoResult.signUp?.firstName
+      ? `${ssoResult.signUp.firstName} ${ssoResult.signUp.lastName || ''}`.trim()
+      : undefined;
+
+    const authRes = await authApi.social({
+      provider: 'clerk',
+      id_token: ssoResult.createdSessionId || 'clerk_session',
+      full_name: fullName,
+      email: email || undefined,
+    });
+    return accept(authRes);
+  }, [startSSOFlow, accept]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
       signIn: async (email, password) => accept(await authApi.login({ email, password })),
+      signInWithGoogle,
       signUp: async (input) => accept(await authApi.register(input)),
       signOut: async () => {
         await unregisterPushToken().catch(() => undefined);
         if (refresh.current) await authApi.logout(refresh.current).catch(() => undefined);
+        await clerk.signOut().catch(() => undefined);
         await clearSession();
       },
       setUser,
       reloadUser: async () => setUser(await meApi.get()),
     }),
-    [status, user, accept, clearSession],
+    [status, user, accept, signInWithGoogle, clerk, clearSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
