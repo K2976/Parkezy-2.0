@@ -374,7 +374,19 @@ export function Tag({ label, icon }: { label: string; icon?: IconName }) {
 }
 
 /** Clay switch: recessed track, raised knob. */
-export function Toggle({ label, value, onChange, hint }: { label: string; value: boolean; onChange: (v: boolean) => void; hint?: string }) {
+export function Toggle({
+  label,
+  value,
+  onChange,
+  hint,
+  style,
+}: {
+  label?: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  hint?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
   const { colors: c, shadows } = useTheme();
   const reduce = useReducedMotion();
   const x = useSharedValue(value ? 1 : 0);
@@ -386,13 +398,18 @@ export function Toggle({ label, value, onChange, hint }: { label: string; value:
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
-      accessibilityLabel={label}
+      accessibilityLabel={label ?? 'Toggle switch'}
       onPress={() => onChange(!value)}
-      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md }}>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: fonts.bodyMedium }}>{label}</Text>
-        {hint ? <Text variant="small">{hint}</Text> : null}
-      </View>
+      style={[
+        label ? { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md } : undefined,
+        style,
+      ]}>
+      {label ? (
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: fonts.bodyMedium }}>{label}</Text>
+          {hint ? <Text variant="small">{hint}</Text> : null}
+        </View>
+      ) : null}
       <View style={[styles.track, { backgroundColor: value ? c.accentSoft : c.clayRecessed, boxShadow: shadows.clayPressed }]}>
         <Animated.View style={[styles.thumb, { backgroundColor: value ? c.accent : c.clayKnob, boxShadow: shadows.clayKnob }, knob]} />
       </View>

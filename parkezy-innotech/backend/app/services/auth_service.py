@@ -287,6 +287,7 @@ class AuthService:
         id_token: str,
         nonce: str | None,
         full_name: str | None,
+        email: str | None = None,
         user_agent: str | None,
     ) -> tuple[User, TokenPair, bool]:
         """Returns (user, tokens, created). Lookup order: the provider's stable subject id, then a
@@ -294,6 +295,14 @@ class AuthService:
         if verifier is None:
             raise Unauthorized("Social sign-in is not available", code="provider_not_configured")
         identity = await verifier.verify(provider=provider, id_token=id_token, nonce=nonce)
+        if not identity.email and email:
+            from app.integrations.identity import SocialIdentity as IdentityInfo
+            identity = IdentityInfo(
+                subject=identity.subject,
+                email=email.lower(),
+                email_verified=True,
+                full_name=identity.full_name or full_name,
+            )
         # Two first sign-ins racing each other: the loser hits a unique constraint and retries,
         # by which time the winner's account exists and is found by subject.
         for attempt in range(3):

@@ -1,5 +1,7 @@
 import 'expo-blob';
 
+import { ClerkProvider } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
 import { DMSans_400Regular } from '@expo-google-fonts/dm-sans/400Regular';
 import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
 import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
@@ -10,12 +12,16 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiError, NETWORK_ERROR } from '@/api/client';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
+import { env } from '@/config/env';
 import { fonts, useTheme } from '@/ui/theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -97,13 +103,15 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider value={navTheme}>
-            <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
-            {/* If fonts fail to load we still render with system fonts rather than block the app. */}
-            <RootNavigator fontsReady={fontsLoaded || !!fontError} />
-          </ThemeProvider>
-        </AuthProvider>
+        <ClerkProvider publishableKey={env.clerkPublishableKey} tokenCache={tokenCache}>
+          <AuthProvider>
+            <ThemeProvider value={navTheme}>
+              <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+              {/* If fonts fail to load we still render with system fonts rather than block the app. */}
+              <RootNavigator fontsReady={fontsLoaded || !!fontError} />
+            </ThemeProvider>
+          </AuthProvider>
+        </ClerkProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

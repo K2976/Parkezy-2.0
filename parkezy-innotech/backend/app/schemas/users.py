@@ -122,6 +122,7 @@ class SocialSignInRequest(Schema):
     nonce: str | None = Field(default=None, max_length=256)
     # Apple only shares the name on the very first sign-in, and only with the app.
     full_name: str | None = Field(default=None, max_length=120)
+    email: EmailStr | None = Field(default=None)
 
 
 class AdminUserOut(UserOut):

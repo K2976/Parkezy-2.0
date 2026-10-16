@@ -115,14 +115,34 @@ export function metresBetween(a: Coords, b: Coords): number {
 }
 
 /**
- * Universal geocoding: tries Expo native geocoder first; falls back to
- * OpenStreetMap Nominatim for 100% reliable worldwide location discovery.
+ * Universal geocoding: tries Google Maps API if configured, then Expo native geocoder,
+ * falling back to OpenStreetMap Nominatim for 100% reliable worldwide location discovery.
  */
 export async function geocode(query: string): Promise<Coords | null> {
   const clean = query.trim();
   if (!clean) return null;
 
-  // 1. Try native geocoding first
+  // 1. Try Google Maps Geocoding if API key is configured
+  if (env.googleMapsApiKey) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(clean)}&key=${env.googleMapsApiKey}`;
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'OK' && data.results && data.results[0]?.geometry?.location) {
+          const loc = data.results[0].geometry.location;
+          return { latitude: loc.lat, longitude: loc.lng };
+        }
+      }
+    } catch {
+      // Fallback to native
+    }
+  }
+
+  // 2. Try native geocoding
   try {
     const results = await Location.geocodeAsync(clean);
     if (results && results[0]) {
@@ -132,7 +152,7 @@ export async function geocode(query: string): Promise<Coords | null> {
     // Proceed to OSM fallback
   }
 
-  // 2. Universal OpenStreetMap Nominatim fallback (works for any city, landmark, or address globally)
+  // 3. Universal OpenStreetMap Nominatim fallback (works for any city, landmark, or address globally)
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
@@ -163,9 +183,37 @@ export async function geocode(query: string): Promise<Coords | null> {
 }
 
 /**
- * Universal reverse geocoding with Nominatim fallback.
+ * Universal reverse geocoding with Google Maps, native, and Nominatim fallback.
  */
 export async function reverseGeocode(coords: Coords): Promise<{ address: string; city: string; postalCode: string }> {
+  // 1. Try Google Maps Reverse Geocoding if API key is configured
+  if (env.googleMapsApiKey) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=${env.googleMapsApiKey}`;
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'OK' && data.results && data.results[0]) {
+          const r = data.results[0];
+          let city = '';
+          let postalCode = '';
+          for (const comp of r.address_components || []) {
+            if (comp.types.includes('locality')) city = comp.long_name;
+            else if (!city && comp.types.includes('administrative_area_level_2')) city = comp.long_name;
+            if (comp.types.includes('postal_code')) postalCode = comp.long_name;
+          }
+          return { address: r.formatted_address || '', city, postalCode };
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  // 2. Try native reverse geocoding
   try {
     const [place] = await Location.reverseGeocodeAsync(coords);
     if (place) {
@@ -176,6 +224,7 @@ export async function reverseGeocode(coords: Coords): Promise<{ address: string;
     // Proceed to OSM fallback
   }
 
+  // 3. OpenStreetMap Nominatim fallback
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);

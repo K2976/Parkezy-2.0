@@ -12,10 +12,12 @@ import {
   Banner,
   Button,
   Card,
+  Divider,
   ErrorState,
   IconButton,
   IconOrb,
   Loading,
+  Pill,
   Row,
   Screen,
   Section,
@@ -148,40 +150,87 @@ export default function ManageListing() {
       </Section>
 
       <Section title={`Slots (${l.slots.filter((s) => s.is_active).length} active)`}>
+        {l.slots.length === 0 ? (
+          <Card tier="light">
+            <Text variant="muted" style={{ textAlign: 'center', paddingVertical: spacing.sm }}>
+              No parking slots added yet. Add your first bay or space below.
+            </Text>
+          </Card>
+        ) : null}
+
         {l.slots.map((s) => (
           <Card key={s.id} tier="light">
-            <Row gap={spacing.md}>
-              <IconOrb icon={s.slot_type === 'ev' ? 'flash-outline' : 'car-outline'} tone={s.is_active ? 'accent' : 'neutral'} size={40} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: fonts.heading }}>{s.label}</Text>
-                <Text variant="small">
-                  {titleCase(s.slot_type)} · {money(s.hourly_rate, l.currency)}/h
-                </Text>
-              </View>
-              <Toggle label={s.is_active ? 'On' : 'Off'} value={s.is_active} onChange={(v) => toggleSlot.mutate({ id: s.id, active: v })} />
-              <IconButton
-                icon="trash-outline"
-                tone="danger"
-                size={38}
-                label={`Delete slot ${s.label}`}
-                onPress={() => confirm('Delete', `Delete slot ${s.label}? Slots with past bookings are switched off instead.`, () => removeSlot.mutate(s.id))}
-              />
-            </Row>
+            <View style={{ gap: spacing.sm }}>
+              {/* Slot details & actions */}
+              <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <Row gap={spacing.md} style={{ flex: 1, paddingRight: spacing.sm }}>
+                  <IconOrb
+                    icon={s.slot_type === 'ev' ? 'flash-outline' : 'car-outline'}
+                    tone={s.is_active ? 'accent' : 'neutral'}
+                    size={40}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: fonts.heading, fontSize: 16 }}>{s.label}</Text>
+                    <Text variant="small">
+                      {titleCase(s.slot_type)} · {money(s.hourly_rate, l.currency)}/h
+                    </Text>
+                  </View>
+                </Row>
+                <IconButton
+                  icon="trash-outline"
+                  tone="danger"
+                  size={36}
+                  label={`Delete slot ${s.label}`}
+                  onPress={() =>
+                    confirm(
+                      'Delete',
+                      `Delete slot ${s.label}? Slots with past bookings are switched off instead.`,
+                      () => removeSlot.mutate(s.id),
+                    )
+                  }
+                />
+              </Row>
+
+              <Divider />
+
+              {/* Status & availability toggle */}
+              <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <Row gap={spacing.sm} style={{ flex: 1, paddingRight: spacing.sm }}>
+                  <Pill label={s.is_active ? 'Active' : 'Paused'} tone={s.is_active ? 'success' : 'neutral'} />
+                  <Text variant="small" style={{ flexShrink: 1 }}>
+                    {s.is_active ? 'Available for bookings' : 'Hidden from drivers'}
+                  </Text>
+                </Row>
+                <Toggle
+                  value={s.is_active}
+                  onChange={(v) => toggleSlot.mutate({ id: s.id, active: v })}
+                />
+              </Row>
+            </View>
           </Card>
         ))}
-        <Row style={{ alignItems: 'flex-start' }}>
-          <View style={{ flex: 1 }}>
-            <TextField label="New slot label" value={newSlot} onChangeText={setNewSlot} maxLength={32} autoCapitalize="characters" />
-          </View>
+
+        <Card tier="light">
+          <Text style={{ fontFamily: fonts.heading, fontSize: 15, marginBottom: spacing.xs }}>
+            Add new slot
+          </Text>
+          <TextField
+            label="Slot or bay label"
+            placeholder="e.g. Bay A-1, Slot 4"
+            value={newSlot}
+            onChangeText={setNewSlot}
+            maxLength={32}
+            autoCapitalize="characters"
+          />
           <Button
-            title="Add"
+            title="Add slot"
+            icon="add-circle-outline"
             kind="secondary"
-            style={{ marginTop: 22 }}
             disabled={!newSlot.trim()}
             loading={addSlot.isPending}
             onPress={() => addSlot.mutate(newSlot.trim(), { onSuccess: () => setNewSlot('') })}
           />
-        </Row>
+        </Card>
       </Section>
 
       <Section title="Details">

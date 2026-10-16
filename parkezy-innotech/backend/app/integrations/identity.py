@@ -42,6 +42,8 @@ GOOGLE_ISSUERS = ("https://accounts.google.com", "accounts.google.com")
 GOOGLE_JWKS = "https://www.googleapis.com/oauth2/v3/certs"
 APPLE_ISSUERS = ("https://appleid.apple.com",)
 APPLE_JWKS = "https://appleid.apple.com/auth/keys"
+CLERK_ISSUERS = ("https://exciting-sawfly-3079.clerk.accounts.dev",)
+CLERK_JWKS = "https://exciting-sawfly-3079.clerk.accounts.dev/.well-known/jwks.json"
 JWKS_TTL_SECONDS = 3600
 
 
@@ -51,11 +53,20 @@ def _truthy(value: object) -> bool:
 
 
 class OidcIdentityVerifier:
-    def __init__(self, http: httpx.AsyncClient, *, google_client_ids: list[str], apple_client_ids: list[str]) -> None:
+    def __init__(
+        self,
+        http: httpx.AsyncClient,
+        *,
+        google_client_ids: list[str],
+        apple_client_ids: list[str],
+        clerk_issuer: str = "https://exciting-sawfly-3079.clerk.accounts.dev",
+        clerk_jwks_url: str = "https://exciting-sawfly-3079.clerk.accounts.dev/.well-known/jwks.json",
+    ) -> None:
         self._http = http
         self._providers = {
             "google": ProviderConfig(GOOGLE_ISSUERS, GOOGLE_JWKS, tuple(google_client_ids)),
             "apple": ProviderConfig(APPLE_ISSUERS, APPLE_JWKS, tuple(apple_client_ids)),
+            "clerk": ProviderConfig((clerk_issuer,), clerk_jwks_url, ()),
         }
         self._jwks: dict[str, tuple[float, dict[str, jwt.PyJWK]]] = {}
 
@@ -74,7 +85,7 @@ class OidcIdentityVerifier:
 
     async def verify(self, *, provider: str, id_token: str, nonce: str | None) -> SocialIdentity:
         config = self._providers.get(provider)
-        if config is None or not config.client_ids:
+        if config is None or (provider != "clerk" and not config.client_ids):
             raise ServiceUnavailable(f"Sign in with {provider.title()} is not set up", code="provider_not_configured")
         invalid = Unauthorized("Could not verify the sign-in, please try again", code="invalid_id_token")
         try:
@@ -88,13 +99,20 @@ class OidcIdentityVerifier:
         if key is None:
             raise invalid
         try:
+            options = {"require": ["exp", "iat", "sub", "iss"]}
+            audience = list(config.client_ids) if config.client_ids else None
+            if audience:
+                options["require"].append("aud")
+            else:
+                options["verify_aud"] = False
+
             claims = jwt.decode(
                 id_token,
                 key.key,
                 algorithms=["RS256", "ES256"],
-                audience=list(config.client_ids),
+                audience=audience,
                 issuer=list(config.issuers),
-                options={"require": ["exp", "iat", "sub", "iss", "aud"]},
+                options=options,
             )
         except jwt.PyJWTError as e:
             log.info("rejected %s id token: %s", provider, e)
@@ -105,9 +123,17 @@ class OidcIdentityVerifier:
             if token_nonce not in (nonce, hashlib.sha256(nonce.encode()).hexdigest()):
                 raise invalid
         email = claims.get("email")
+        if not email and claims.get("email_addresses"):
+            emails = claims.get("email_addresses")
+            if isinstance(emails, list) and emails and isinstance(emails[0], dict):
+                email = emails[0].get("email_address")
+        full_name = claims.get("name") or claims.get("full_name")
+        if not full_name and (claims.get("given_name") or claims.get("family_name")):
+            full_name = f"{claims.get('given_name', '')} {claims.get('family_name', '')}".strip()
+
         return SocialIdentity(
             subject=str(claims["sub"]),
             email=email.lower() if isinstance(email, str) else None,
-            email_verified=_truthy(claims.get("email_verified")),
-            full_name=claims.get("name"),
+            email_verified=_truthy(claims.get("email_verified", True)),
+            full_name=full_name or None,
         )

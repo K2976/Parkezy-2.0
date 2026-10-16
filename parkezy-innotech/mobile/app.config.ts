@@ -11,6 +11,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: env('APP_DISPLAY_NAME', 'Parkezy'),
   slug: 'parkezy',
+  owner: 'honourss-team',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -40,6 +41,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
+    '@clerk/expo',
+    'expo-web-browser',
     '@react-native-community/datetimepicker',
     ['expo-splash-screen', { backgroundColor: '#F4F1FA', image: './assets/images/splash-icon.png', imageWidth: 76 }],
     ['expo-location', { locationWhenInUsePermission: 'Parkezy uses your location to show parking spots near you.' }],
@@ -52,7 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     ['expo-image-picker', { photosPermission: 'Parkezy needs your photos to add pictures of your parking spot.' }],
     ['expo-notifications', { color: '#6E5BC4' }],
-    ['react-native-maps', { androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY ?? '' }],
+    ['react-native-maps', { androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '' }],
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
   extra: {

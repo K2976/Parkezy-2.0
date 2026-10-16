@@ -156,6 +156,7 @@ class PayoutMethod(StrEnum):
 class SocialProvider(StrEnum):
     GOOGLE = "google"
     APPLE = "apple"
+    CLERK = "clerk"
 
 
 class NotificationChannel(StrEnum):

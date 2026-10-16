@@ -44,5 +44,14 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local images / screenshots
-image.png
+image*.png
+*.png
 
+# Next.js
+.next/
+out/
+
+# Cloned temporary repos
+calQ/
+.agents/
+skills-lock.json
