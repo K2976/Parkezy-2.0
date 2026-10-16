@@ -54,8 +54,8 @@ class Settings(BaseSettings):
     # --- App ---
     app_env: Literal["local", "test", "staging", "production"] = "local"
     app_name: str = "Parkezy"
-    api_public_url: AnyHttpUrl
-    app_deep_link_base: str = Field(description="Base URL the mobile app opens, e.g. parkezy://")
+    api_public_url: AnyHttpUrl = AnyHttpUrl("https://parkezy-api.onrender.com")
+    app_deep_link_base: str = Field(default="parkezy://", description="Base URL the mobile app opens, e.g. parkezy://")
     log_level: str = "INFO"
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     admin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
@@ -160,7 +160,7 @@ class Settings(BaseSettings):
 
     # --- Email ---
     email_provider: Literal["resend", "smtp", "console"] = "console"
-    email_from: str
+    email_from: str = "no-reply@parkezy.com"
     email_reply_to: str | None = None
     resend_api_key: SecretStr | None = None
     resend_api_base: AnyHttpUrl = AnyHttpUrl("https://api.resend.com")
