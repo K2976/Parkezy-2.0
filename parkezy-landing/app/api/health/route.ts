@@ -4,6 +4,39 @@ import { sql } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://parkezy-api.onrender.com";
+  let backendStatus: any = { status: "unknown" };
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`${backendUrl}/health/ready`, {
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      backendStatus = {
+        status: "healthy",
+        url: backendUrl,
+        response: await res.json(),
+      };
+    } else {
+      backendStatus = {
+        status: "unhealthy",
+        statusCode: res.status,
+        url: backendUrl,
+      };
+    }
+  } catch (err: any) {
+    backendStatus = {
+      status: "unreachable",
+      url: backendUrl,
+      error: err?.message,
+    };
+  }
+
+  let dbStatus: any = { status: "unknown" };
   try {
     const result = await sql`
       SELECT 
@@ -12,8 +45,7 @@ export async function GET() {
         NOW() as server_time,
         current_user as db_user
     `;
-
-    return NextResponse.json({
+    dbStatus = {
       status: "healthy",
       service: "Neon Postgres",
       branch: process.env.NEON_BRANCH || "production",
@@ -21,15 +53,30 @@ export async function GET() {
       version: result[0]?.postgres_version,
       timestamp: result[0]?.server_time,
       user: result[0]?.db_user,
-    });
+    };
   } catch (error: any) {
-    return NextResponse.json(
-      {
-        status: "error",
-        service: "Neon Postgres",
-        error: error?.message || "Database connection failed",
-      },
-      { status: 500 }
-    );
+    dbStatus = {
+      status: "error",
+      service: "Neon Postgres",
+      error: error?.message || "Database connection failed",
+    };
   }
+
+  const overallHealthy = dbStatus.status === "healthy" && backendStatus.status === "healthy";
+
+  return NextResponse.json(
+    {
+      status: overallHealthy ? "healthy" : "degraded",
+      timestamp: new Date().toISOString(),
+      services: {
+        frontend: {
+          platform: "Vercel",
+          status: "healthy",
+        },
+        backend: backendStatus,
+        database: dbStatus,
+      },
+    },
+    { status: overallHealthy ? 200 : 207 }
+  );
 }
