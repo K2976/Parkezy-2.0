@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Download, ShieldCheck, Smartphone, CheckCircle2, QrCode } from "lucide-react";
-import AppBackdrop from "@/components/AppBackdrop";
+import { ArrowLeft, Download } from "lucide-react";
 
 export default function DownloadAndroidPage() {
   const cdnApkUrl = "https://expo.dev/artifacts/eas/4iKqrtysoRMsMXk8RLyXoCH5ogVM31_xXCiVOgJUcmg.apk";
@@ -29,30 +28,18 @@ export default function DownloadAndroidPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto w-full px-6 py-8 flex-1 flex flex-col justify-center items-center text-center z-10">
-        {/* Release Tag */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EFEBF9] border border-[#6E5BC4]/30 mb-6 shadow-xs">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-bold text-[#6E5BC4] tracking-tight">
-            Parkezy v1.0.0 — Standalone Android Release
-          </span>
-        </div>
-
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[#1C1924] tracking-tight mb-4">
+      <main className="max-w-4xl mx-auto w-full px-6 py-12 flex-1 flex flex-col justify-center items-center text-center z-10">
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[#1C1924] tracking-tight mb-3">
           Install Parkezy on Android
         </h1>
-        <p className="text-base md:text-lg text-slate-600 max-w-xl mb-8 leading-relaxed">
+        <p className="text-base text-slate-600 max-w-lg mb-8 leading-relaxed">
           Download the official installable APK directly to your Android device. Instant spot reservations, turn-by-turn navigation, and offline gate access.
         </p>
 
-        {/* Action Card */}
-        <div className="bg-white rounded-[32px] p-8 md:p-10 border border-slate-200/80 shadow-xl max-w-md w-full text-center space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-[#EFEBF9] text-[#6E5BC4] flex items-center justify-center mx-auto shadow-inner">
-            <Smartphone size={32} />
-          </div>
-
+        {/* Clean, Normal Card */}
+        <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 max-w-md w-full text-center space-y-5">
           <div>
-            <h2 className="text-xl font-black text-[#1C1924]">Parkezy App APK</h2>
+            <h2 className="text-xl font-bold text-[#1C1924]">Parkezy App APK</h2>
             <p className="text-xs text-slate-500 mt-1">Package: com.parkezy.app • Android 8.0+</p>
           </div>
 
@@ -62,74 +49,20 @@ export default function DownloadAndroidPage() {
               href={apkDownloadUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full bg-[#6E5BC4] hover:bg-[#5F4DB3] transition-all text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-[#6E5BC4]/30 flex items-center justify-center gap-3 text-base active:scale-98"
+              className="w-full bg-[#6E5BC4] hover:bg-[#5F4DB3] transition-all text-white font-semibold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 text-sm"
             >
-              <Download size={20} />
-              <span>Download APK Directly</span>
+              <Download size={18} />
+              <span>Download APK</span>
             </a>
 
             <a
               href={localApkUrl}
               download="parkezy.apk"
-              className="w-full bg-white hover:bg-slate-50 border border-slate-200 text-[#1C1924] font-semibold py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm transition-colors"
+              className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#1C1924] font-medium py-3 px-6 rounded-xl flex items-center justify-center gap-2 text-sm transition-colors"
             >
               <Download size={16} className="text-[#6E5BC4]" />
               <span>Direct Local Mirror (~137 MB)</span>
             </a>
-          </div>
-
-          <div className="flex items-center justify-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3">
-            <ShieldCheck size={16} className="text-emerald-600" />
-            <span>Verified safe build • Signed package • Android 8.0+</span>
-          </div>
-
-          <div className="pt-2 text-xs text-slate-500">
-            <a
-              href="https://expo.dev/accounts/honours1234567890875432s-team/projects/parkezy/builds/3232cc2c-311a-47ae-b32d-c10534ea90d6"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-[#6E5BC4] underline underline-offset-2 flex items-center justify-center gap-1.5"
-            >
-              <QrCode size={14} />
-              <span>Scan QR Code or view build on Expo EAS</span>
-            </a>
-          </div>
-        </div>
-
-        {/* 3 Step Installation Guide */}
-        <div className="mt-14 max-w-2xl w-full text-left">
-          <h3 className="text-lg font-black text-[#1C1924] mb-6 text-center">How to install in 3 easy steps</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-slate-200/60 shadow-xs space-y-2">
-              <div className="w-8 h-8 rounded-full bg-[#6E5BC4] text-white flex items-center justify-center font-bold text-sm">
-                1
-              </div>
-              <h4 className="font-bold text-sm text-[#1C1924]">Download APK</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Tap the download button above from your Android phone browser.
-              </p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-slate-200/60 shadow-xs space-y-2">
-              <div className="w-8 h-8 rounded-full bg-[#6E5BC4] text-white flex items-center justify-center font-bold text-sm">
-                2
-              </div>
-              <h4 className="font-bold text-sm text-[#1C1924]">Allow Install</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                When prompted by your browser, tap &quot;Settings&quot; and enable &quot;Install unknown apps&quot;.
-              </p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-slate-200/60 shadow-xs space-y-2">
-              <div className="w-8 h-8 rounded-full bg-[#6E5BC4] text-white flex items-center justify-center font-bold text-sm">
-                3
-              </div>
-              <h4 className="font-bold text-sm text-[#1C1924]">Start Parking</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Open Parkezy, sign in with your phone or email, and find nearby bays!
-              </p>
-            </div>
           </div>
         </div>
       </main>
