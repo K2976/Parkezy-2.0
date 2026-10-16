@@ -531,9 +531,9 @@ npx expo start
 
 ## Automated Verification, Benchmarks & Load Testing
 
-The platform is fortified with multi-tier verification: **224 full integration tests** covering all business rules and failure cases, a **production-like k6 load and stress test pipeline**, **Prometheus & Grafana telemetry**, and **strict mobile static analysis**.
+The platform is fortified with multi-tier verification: **243 full integration tests** covering all business rules and failure cases, a **production-like k6 load and stress test pipeline**, **Prometheus & Grafana telemetry**, and **strict mobile static analysis**.
 
-### 1. Unit & Integration Test Suite (224 Tests)
+### 1. Unit & Integration Test Suite (243 Tests)
 
 Run the full backend integration test suite against live PostgreSQL (with PostGIS) and Redis:
 
@@ -552,6 +552,7 @@ uv run pytest
 | `tests/test_booking_extension.py` | In-session booking extension, recalculations, gap conflict checks. |
 | `tests/test_bookings.py` | Zero double-booking concurrency, GiST constraint rejection, hold timeouts. |
 | `tests/test_domain.py` | Domain invariants, time intervals, business rule validations. |
+| `tests/test_email.py` | Resend request shape and error classification (mocked API), permanent vs. retryable failures, idempotent replays, webhook ordering/suppression, per-address reset limits. |
 | `tests/test_favorites.py` | Driver bookmarking and favorite listing persistence. |
 | `tests/test_host_dashboard.py` | Host listing KPIs, 14-day earnings aggregation, safe archive guards. |
 | `tests/test_identity_verifier.py` | Verification codes, rate-limited SMS/email OTP attempts. |
@@ -697,6 +698,44 @@ npx expo-doctor
 | **Redis Cache** | Upstash / Redis Cloud | Redis Cloud Essentials (30 MB free tier) or Upstash Serverless Redis. |
 | **Object Storage** | Backblaze B2 (S3 API) | 10 GB free tier. Keep bucket private and configure CORS to allow mobile `PUT` uploads. |
 | **Mobile App** | EAS Build (Expo Application Services) | Run `npx eas build --platform all` to create standalone `.apk` / `.aab` / `.ipa` builds. |
+
+### Transactional Email (Resend)
+
+Every email (verification and password-reset codes, password-changed alerts, booking, payout, dispute and
+support notifications) is written to the transactional outbox in the same database transaction as the
+change that caused it, then sent by the **Celery worker** through Resend's HTTP API
+(`backend/app/integrations/email.py`). Templates are Jinja files in `backend/app/templates/emails/`
+(`.subject`, `.html`, `.txt` plain-text fallback). The API never sends email inline, so a Resend outage
+cannot fail a sign-up or booking. **Without a running worker no email is ever sent.** On Render's free
+plan (no background workers) `render.yaml` starts [`backend/render-start.sh`](./backend/render-start.sh),
+which runs the Celery worker and beat inside the web container next to a single API worker.
+
+| Variable | Value |
+|---|---|
+| `EMAIL_PROVIDER` | `resend` in staging/production. `smtp` (Mailpit, UI at http://localhost:8025) or `console` locally. `console` logs codes, so it is refused outside `local`/`test`. |
+| `EMAIL_FROM` | `Parkezy <noreply@mail.kartik2976.xyz>`. Must be on the verified Resend domain. |
+| `RESEND_API_KEY` | Secret, server-side only (Render dashboard / `backend/.env`). Use a *Sending access* key restricted to `mail.kartik2976.xyz`. Never put it in `mobile/` or commit it. The app refuses to boot with `EMAIL_PROVIDER=resend` and no key. |
+| `RESEND_WEBHOOK_SECRET` | Optional `whsec_…` signing secret. Without it `/v1/webhooks/resend` rejects every call. |
+| `EMAIL_REPLY_TO` | Optional. Leave it empty unless it is a mailbox you read. |
+| `RATE_LIMIT_EMAIL_PER_WINDOW` / `_WINDOW_SECONDS` | Reset/verification emails per address across all IPs (default 3 per 15 min). |
+
+**Delivery semantics.** A send is idempotent per event (`email_log.dedupe_key`, also sent as Resend's
+`Idempotency-Key`), so retries never email twice. Network errors, 429s, 5xx, 401 and 403 are retried by
+the outbox with jittered exponential backoff, up to `OUTBOX_MAX_ATTEMPTS`. Permanent rejections (400/422,
+e.g. an invalid recipient) are recorded as `failed` in `email_log` and not retried. `sent` means Resend
+*accepted* the message; `delivered`, `bounced`, `complained`, `failed` and `skipped` (suppressed) come from
+webhooks. Bounced, complained and suppressed addresses are added to `email_suppressions` and skipped from
+then on.
+
+**Webhooks (optional, recommended).** In Resend → Webhooks, add `https://<api-host>/v1/webhooks/resend`
+with the events `email.delivered`, `email.bounced`, `email.complained`, `email.failed` and
+`email.suppressed`, then set the signing secret as `RESEND_WEBHOOK_SECRET`. Svix signatures are verified
+(5-minute tolerance), and duplicate or out-of-order events are harmless because statuses only move forward.
+
+**Testing safely.** `uv run pytest` never reaches Resend (the API is mocked). For a real end-to-end
+check, set `EMAIL_PROVIDER=resend` locally and register with an address you own, or with Resend's test
+inbox `delivered@resend.dev`. Watch the Resend dashboard's *Emails* log. The free tier allows 100 emails a
+day; a `daily_quota_exceeded` 429 is retried for a few hours only, so emails beyond the quota can be lost.
 
 ---
 

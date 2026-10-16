@@ -59,10 +59,15 @@ class FakeJobs:
 class FakeEmailSender:
     sent: list = field(default_factory=list)
     fail: bool = False
+    error: Exception | None = None  # raised instead of sending, e.g. a PermanentEmailError
+    attempts: int = 0
 
     async def send(self, email) -> str:
         from app.core.errors import ExternalServiceError
 
+        self.attempts += 1
+        if self.error is not None:
+            raise self.error
         if self.fail:
             raise ExternalServiceError("boom")
         self.sent.append(email)

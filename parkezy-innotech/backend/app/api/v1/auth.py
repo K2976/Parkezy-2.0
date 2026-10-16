@@ -95,14 +95,23 @@ async def verify_email(body: CodeRequest, user: CurrentUser, services: ServicesD
     return user_out(await services.auth().verify_email(user, body.code))
 
 
+async def _email_limit(c: ContainerDep, bucket: str, identity: str) -> None:
+    s = c.settings
+    await c.rate_limiter.hit(bucket, identity, s.rate_limit_email_per_window, s.rate_limit_email_window_seconds)
+
+
 @router.post("/resend-verification", response_model=Message, dependencies=[auth_limit])
-async def resend_verification(user: CurrentUser, services: ServicesDep) -> Message:
+async def resend_verification(user: CurrentUser, services: ServicesDep, c: ContainerDep) -> Message:
+    await _email_limit(c, "verify_email_account", str(user.id))
     await services.auth().resend_verification(user)
     return Message(message="A new code is on its way")
 
 
 @router.post("/forgot-password", response_model=Message, dependencies=[auth_limit])
-async def forgot_password(body: EmailRequest, services: ServicesDep) -> Message:
+async def forgot_password(body: EmailRequest, services: ServicesDep, c: ContainerDep) -> Message:
+    # Keyed on the address asked for, before any lookup, so it limits unknown and real accounts alike
+    # (no enumeration) and holds even when requests rotate through many IPs.
+    await _email_limit(c, "reset_email_account", sha256_hex(body.email.strip().lower()))
     await services.auth().forgot_password(body.email)
     return Message(message="If that email has an account, a reset code is on its way")
 

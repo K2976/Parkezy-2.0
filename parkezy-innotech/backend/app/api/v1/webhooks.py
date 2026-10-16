@@ -43,5 +43,10 @@ async def resend(request: Request, services: ServicesDep, c: ContainerDep) -> Me
     ):
         raise Unauthorized("Invalid webhook signature", code="webhook_signature_invalid")
     event = _json(body)
-    await services.email().apply_provider_event(str(event.get("type", "")), event.get("data") or {})
+    data = event.get("data") if isinstance(event, dict) else None
+    if not isinstance(data, dict):
+        raise ValidationFailed("Invalid webhook payload")
+    # Processing is idempotent (statuses only move forward, suppressions are upserts), so Svix's
+    # at-least-once redeliveries need no separate dedupe table.
+    await services.email().apply_provider_event(str(event.get("type", "")), data)
     return Message(message="ok")

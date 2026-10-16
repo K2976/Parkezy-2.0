@@ -5,18 +5,30 @@ services:
     rootDir: parkezy-innotech/backend
     dockerfilePath: Dockerfile
     dockerContext: .
+    # API + Celery worker/beat in one container (free plan has no background workers). See the script.
+    dockerCommand: sh render-start.sh
     plan: free
     region: oregon
     healthCheckPath: /health/ready
     envVars:
+      # One web worker leaves room for the Celery worker inside the free plan's 512 MB.
+      - key: WEB_CONCURRENCY
+        value: "1"
       - key: APP_ENV
         value: staging
       - key: APP_NAME
         value: Parkezy
       - key: API_PUBLIC_URL
         value: https://parkezy-api.onrender.com
+      # Email via Resend. The key and webhook secret are set in the Render dashboard, never here.
+      - key: EMAIL_PROVIDER
+        value: resend
       - key: EMAIL_FROM
-        value: no-reply@parkezy.com
+        value: Parkezy <noreply@mail.kartik2976.xyz>
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
       - key: APP_DEEP_LINK_BASE
         value: parkezy://
       - key: TRUST_FORWARDED_FOR

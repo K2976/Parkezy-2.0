@@ -6,6 +6,7 @@ in the `platform_settings` table so an admin can change them at runtime
 """
 
 import os
+from email.utils import parseaddr
 from functools import lru_cache
 from typing import Annotated, Literal
 
@@ -148,6 +149,10 @@ class Settings(BaseSettings):
     rate_limit_auth_per_window: int = 10
     rate_limit_access_verify_per_window: int = 20
     rate_limit_default_per_window: int = 120
+    # Emails one address/account can trigger on demand (password reset, verification resend), across
+    # all IPs. Stops inbox bombing and stops anyone draining the email provider's daily quota.
+    rate_limit_email_per_window: int = 3
+    rate_limit_email_window_seconds: int = 900
 
     # --- Caching / bloom filters ---
     search_cache_ttl_seconds: int = 30
@@ -160,7 +165,8 @@ class Settings(BaseSettings):
 
     # --- Email ---
     email_provider: Literal["resend", "smtp", "console"] = "console"
-    email_from: str = "no-reply@parkezy.com"
+    # Must be on a domain verified in Resend, e.g. "Parkezy <noreply@mail.kartik2976.xyz>".
+    email_from: str = "Parkezy <noreply@mail.kartik2976.xyz>"
     email_reply_to: str | None = None
     resend_api_key: SecretStr | None = None
     resend_api_base: AnyHttpUrl = AnyHttpUrl("https://api.resend.com")
@@ -233,6 +239,11 @@ class Settings(BaseSettings):
     def _validate_providers(self) -> "Settings":
         if self.email_provider == "resend" and not self.resend_api_key:
             raise ValueError("EMAIL_PROVIDER=resend requires RESEND_API_KEY")
+        if "@" not in parseaddr(self.email_from)[1]:
+            raise ValueError('EMAIL_FROM must be an address, e.g. "Parkezy <noreply@mail.example.com>"')
+        if self.email_provider == "console" and self.app_env not in ("local", "test"):
+            # The console sender logs whole emails, verification and reset codes included.
+            raise ValueError(f"EMAIL_PROVIDER=console is only allowed locally, not in {self.app_env}")
         if self.email_provider == "smtp" and not self.smtp_host:
             raise ValueError("EMAIL_PROVIDER=smtp requires SMTP_HOST")
         if self.payment_provider == "razorpay" and not (
@@ -245,8 +256,6 @@ class Settings(BaseSettings):
             for name in ("jwt_secret", "access_code_secret"):
                 if len(getattr(self, name).get_secret_value()) < 32:
                     raise ValueError(f"{name.upper()} must be at least 32 characters in production")
-            if self.email_provider == "console":
-                raise ValueError("EMAIL_PROVIDER=console is not allowed in production")
             if "*" in self.cors_origins:
                 raise ValueError("CORS_ORIGINS=* is not allowed in production; list the allowed origins")
         return self

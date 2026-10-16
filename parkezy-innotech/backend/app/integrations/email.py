@@ -30,8 +30,20 @@ class OutgoingEmail:
 
 class EmailSender(Protocol):
     async def send(self, email: OutgoingEmail) -> str:
-        """Deliver and return the provider message id. Raise on retryable failure."""
+        """Deliver and return the provider message id. Raise ExternalServiceError on retryable
+        failure, PermanentEmailError when retrying the same message can never succeed."""
         ...
+
+
+class PermanentEmailError(ExternalServiceError):
+    """The provider rejected this message for good (bad recipient, invalid payload…). Retrying is pointless."""
+
+
+# Resend errors worth retrying (https://resend.com/docs/api-reference/errors). 401/403 are config
+# problems (bad key, unverified domain) an operator can fix, so they stay retryable within the
+# outbox's bounded attempts; other 4xx are permanent for this message.
+RESEND_RETRYABLE_STATUS = {401, 403, 429}
+RESEND_RETRYABLE_409 = {"concurrent_idempotent_requests", "resource_locked"}
 
 
 class ResendEmailSender:
@@ -65,13 +77,26 @@ class ResendEmailSender:
                 },
             )
         except httpx.HTTPError as e:
-            raise ExternalServiceError("Email provider unreachable") from e
-        if response.status_code >= 400:
-            raise ExternalServiceError(
-                "Email provider rejected the message",
-                details={"status": response.status_code, "body": response.text[:500]},
-            )
-        return str(response.json()["id"])
+            raise ExternalServiceError("Email provider unreachable", details={"error": type(e).__name__}) from e
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+        status = response.status_code
+        if status >= 400:
+            # Resend's error body is {statusCode, name, message}; never echo our request (it holds codes).
+            name = str(payload.get("name", ""))
+            details = {"status": status, "name": name, "message": str(payload.get("message", ""))[:300]}
+            retryable = status >= 500 or status in RESEND_RETRYABLE_STATUS or name in RESEND_RETRYABLE_409
+            error = ExternalServiceError if retryable else PermanentEmailError
+            raise error("Email provider rejected the message", code=name or None, details=details)
+        message_id = payload.get("id")
+        if not message_id:
+            # Retrying is safe: the Idempotency-Key makes Resend return the original result.
+            raise ExternalServiceError("Email provider returned no message id", details={"status": status})
+        return str(message_id)
 
 
 class SmtpEmailSender:

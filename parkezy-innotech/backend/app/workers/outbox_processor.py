@@ -6,6 +6,7 @@ crash simply lets the lease run out and the event is retried (handlers are idemp
 """
 
 import logging
+import random
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
@@ -23,7 +24,10 @@ SENSITIVE_KEYS = ("code",)
 
 
 def backoff(attempts: int, base_seconds: int, max_seconds: int) -> timedelta:
-    return timedelta(seconds=min(base_seconds * 2 ** max(attempts - 1, 0), max_seconds))
+    """Exponential, capped, with jitter so events that failed together (provider outage) don't all
+    retry in the same instant and trip its rate limit again."""
+    delay = min(base_seconds * 2 ** max(attempts - 1, 0), max_seconds)
+    return timedelta(seconds=delay * random.uniform(0.75, 1.0))
 
 
 class OutboxProcessor:
