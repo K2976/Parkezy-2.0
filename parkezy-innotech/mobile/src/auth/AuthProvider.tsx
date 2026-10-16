@@ -118,7 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ssoResult.signUp?.createdSessionId;
 
     if (!sessionId) {
-      throw new Error('Google sign-in was cancelled or could not be completed.');
+      const type = (ssoResult as any).authSessionResult?.type;
+      if (type === 'cancel' || type === 'dismiss') {
+        throw new Error('Google sign-in popup was closed or cancelled.');
+      }
+      throw new Error(`Google sign-in could not be completed (${type || 'no session created'}).`);
     }
 
     if (ssoResult.setActive) {
