@@ -63,6 +63,7 @@ function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
       {/* Reachable signed in or out: sign-up links to the legal pages, and locked-out users need support. */}
+      <Stack.Screen name="sso-callback" options={{ headerShown: false }} />
       <Stack.Screen name="legal/[doc]" options={{ ...header, title: '' }} />
       <Stack.Screen name="support" options={{ ...header, title: 'Contact support' }} />
     </Stack>
