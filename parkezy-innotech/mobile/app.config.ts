@@ -11,7 +11,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: env('APP_DISPLAY_NAME', 'Parkezy'),
   slug: 'parkezy',
-  owner: 'honourss-team',
+  owner: 'honours1234567890875432s-team',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -59,6 +59,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
   extra: {
-    eas: process.env.EAS_PROJECT_ID ? { projectId: process.env.EAS_PROJECT_ID } : undefined,
+    ...config.extra,
+    eas: {
+      projectId: process.env.EAS_PROJECT_ID || '898e16f3-64dd-4707-8772-0d576d003268',
+    },
   },
 });
