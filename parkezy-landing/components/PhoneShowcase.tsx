@@ -25,19 +25,19 @@ const features = [
       "Pinpoint guaranteed parking near your destination before you even start driving. Filter in real-time by covered bays, EV charging, CCTV security, and instant entry.",
   },
   {
-    label: "Instant Booking",
+    label: "Booking",
     title: "Guaranteed Hold & 1-Click UPI Payment",
     description:
       "Select your exact vehicle size and parking window. Lock your slot instantly with an automated 10-minute hold and check out seamlessly via UPI, PhonePe, or cards.",
   },
   {
-    label: "Smart Access",
+    label: "Access",
     title: "Dynamic QR & Offline Keypad PIN",
     description:
       "Never worry about poor cellular reception in underground basements. Scan rotating dynamic QR codes at boom barriers or enter your 6-digit offline PIN directly into the gate keypad.",
   },
   {
-    label: "Host Monetization",
+    label: "Host",
     title: "Turn Empty Driveways into Daily Income",
     description:
       "List private driveways, residential bays, or commercial lots in minutes. Toggle slot availability live, track occupancy rates, and enjoy automated direct bank payouts.",
@@ -210,17 +210,17 @@ export default function PhoneShowcase() {
                 <button
                   key={f.label}
                   onClick={() => switchMobileScreen(i)}
-                  className={`relative flex-1 pb-3 text-center text-xs sm:text-sm font-semibold transition-colors ${
+                  className={`relative flex-1 pb-3 text-center text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap px-1 ${
                     active
                       ? "text-[#6E5BC4] font-bold"
                       : "text-slate-400 hover:text-slate-700"
                   }`}
                 >
-                  <span>{f.label}</span>
+                  <span className="whitespace-nowrap">{f.label}</span>
                   {active && (
                     <motion.div
                       layoutId="mobileActiveTabLine"
-                      className="absolute bottom-[-1px] left-2 right-2 h-[2.5px] bg-[#6E5BC4] rounded-full"
+                      className="absolute bottom-[-1px] left-1 right-1 h-[2.5px] bg-[#6E5BC4] rounded-full"
                       transition={{ type: "spring", stiffness: 450, damping: 32 }}
                     />
                   )}
