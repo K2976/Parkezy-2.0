@@ -13,7 +13,7 @@ export default function FinalCTA() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="bg-gradient-to-br from-[#2E2A35] via-[#1F1C25] to-[#363040] rounded-[40px] px-8 py-12 md:px-14 md:py-16 flex flex-col lg:flex-row items-center justify-between gap-12 relative shadow-2xl border border-[rgba(215,210,230,0.2)]"
+          className="bg-gradient-to-br from-[#2E2A35] via-[#1F1C25] to-[#363040] rounded-[32px] md:rounded-[40px] px-6 py-10 md:px-14 md:py-16 flex flex-col lg:flex-row items-center justify-between gap-12 relative shadow-2xl border border-[rgba(215,210,230,0.2)] overflow-hidden"
         >
           {/* Decorative Background Glows */}
           <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#6E5BC4]/15 rounded-full blur-3xl pointer-events-none" />
