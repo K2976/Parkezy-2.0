@@ -19,7 +19,7 @@ services:
       - key: CORS_ORIGINS
         value: "*"
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_tYl8upQBOW5G@ep-orange-river-b59omcme-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+        value: postgresql://neondb_owner:npg_kewAUW2Mmnv1@ep-soft-dream-b4hu6x1q-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
       - key: REDIS_URL
         value: redis://default:7TSn559dq1m9Bwea2B58XmHuqEAjE0zz@sky-flavor-meal-82500.db.redis.io:16924/0
       - key: JWT_SECRET

@@ -5,7 +5,7 @@ import { ArrowLeft, Download, ShieldCheck, Smartphone, CheckCircle2, QrCode } fr
 import AppBackdrop from "@/components/AppBackdrop";
 
 export default function DownloadAndroidPage() {
-  const apkDownloadUrl = process.env.NEXT_PUBLIC_APK_URL || "https://expo.dev/accounts/honours1234567890875432s-team/projects/parkezy/builds/6a138463-704d-4431-b4c4-05003b278664";
+  const apkDownloadUrl = process.env.NEXT_PUBLIC_APK_URL || "https://expo.dev/accounts/honours1234567890875432s-team/projects/parkezy/builds/3232cc2c-311a-47ae-b32d-c10534ea90d6";
 
   return (
     <div className="min-h-screen bg-[#FAF9FD] relative overflow-hidden flex flex-col justify-between text-[#1C1924]">
