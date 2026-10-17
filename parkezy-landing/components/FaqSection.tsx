@@ -37,7 +37,7 @@ export default function FaqSection() {
           Frequently Asked Questions
         </span>
         <h2 className="text-3xl md:text-5xl font-black text-[#1C1924] tracking-tight">
-          Got questions? We've got answers.
+          Got questions? We&apos;ve got answers.
         </h2>
       </div>
 

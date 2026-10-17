@@ -36,7 +36,7 @@ export default function ComparisonSection() {
               </li>
               <li className="flex items-start gap-3">
                 <X size={17} className="text-red-500 shrink-0 mt-0.5" />
-                <span>Arriving at a crowded lot only to find "FULL" signs.</span>
+                <span>Arriving at a crowded lot only to find &ldquo;FULL&rdquo; signs.</span>
               </li>
               <li className="flex items-start gap-3">
                 <X size={17} className="text-red-500 shrink-0 mt-0.5" />
