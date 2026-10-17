@@ -61,3 +61,6 @@ skills-lock.json
 
 # Per-user Claude Code settings
 **/.claude/settings.local.json
+
+# iOS app secrets (copy Secrets.swift.example)
+parkezy-2.0/parkezy/parkezy/Backend/Secrets.swift

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 
 export default function DownloadAndroidPage() {
-  const cdnApkUrl = "https://expo.dev/artifacts/eas/h3_M2O2urTM3rgidRnMwsl4ctKyK4FA3lB7rEERdp-8.apk";
+  const cdnApkUrl = "https://expo.dev/artifacts/eas/IDx1kmEAnwYZxld5XJEKOuRedNDpi48bMsPbZVsRx14.apk";
   const localApkUrl = "/downloads/parkezy.apk";
   const apkDownloadUrl = process.env.NEXT_PUBLIC_APK_URL || cdnApkUrl;
 

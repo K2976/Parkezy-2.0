@@ -41,6 +41,14 @@ class Forbidden(AppError):
     code = "forbidden"
 
 
+class ChallengeRequired(AppError):
+    """Login needs a solved challenge (CAPTCHA) first. Codes: challenge_required / challenge_failed.
+    details carry only what the client needs to show the widget (provider, public site key)."""
+
+    status_code = 403
+    code = "challenge_required"
+
+
 class NotFound(AppError):
     status_code = 404
     code = "not_found"

@@ -14,13 +14,13 @@ final class SupabaseConfig {
     // MARK: - Supabase Credentials
     // The anon key is safe to ship in client code — Row Level Security on every
     // table is what actually enforces access control, not secrecy of this key.
-    static let supabaseURLString = "https://zhpwqvetlpktlvcitygh.supabase.co"
-    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpocHdxdmV0bHBrdGx2Y2l0eWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzE1MzAsImV4cCI6MjA5NTAwNzUzMH0.hfJqRaYGrKJOFp9Rlce2BRsNjNHOfuLIlMCG_irbG6I"
+    static let supabaseURLString = Secrets.supabaseURL
+    static let supabaseAnonKey = Secrets.supabaseAnonKey
     
     // MARK: - Shared Client
     static let client: SupabaseClient = {
         guard let url = URL(string: supabaseURLString) else {
-            preconditionFailure("⚠️ Invalid Supabase URL: \(supabaseURLString). Update SupabaseConfig.swift with your project URL.")
+            preconditionFailure("⚠️ Invalid Supabase URL: \(supabaseURLString). Set supabaseURL in Secrets.swift.")
         }
         return SupabaseClient(supabaseURL: url, supabaseKey: supabaseAnonKey)
     }()

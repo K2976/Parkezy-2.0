@@ -1,13 +1,25 @@
 import type { NextConfig } from "next";
 
+import path from "path";
+
+const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://parkezy-api.onrender.com";
+
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   async redirects() {
     return [
       {
         source: "/downloads/parkezy.apk",
-        destination: "https://expo.dev/artifacts/eas/h3_M2O2urTM3rgidRnMwsl4ctKyK4FA3lB7rEERdp-8.apk",
+        destination:
+          process.env.NEXT_PUBLIC_APK_URL ||
+          "https://expo.dev/artifacts/eas/IDx1kmEAnwYZxld5XJEKOuRedNDpi48bMsPbZVsRx14.apk",
         permanent: false,
       },
+      // The API serves the legal documents (same text the app shows).
+      { source: "/privacy", destination: `${apiUrl}/legal/privacy`, permanent: false },
+      { source: "/terms", destination: `${apiUrl}/legal/terms`, permanent: false },
     ];
   },
 };

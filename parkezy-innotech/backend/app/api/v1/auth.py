@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 
-from app.api.deps import ContainerDep, CurrentUser, RateLimit, ServicesDep
+from app.api.deps import ContainerDep, CurrentUser, RateLimit, ServicesDep, client_ip
 from app.api.presenters import user_out
+from app.core.errors import Unauthorized
 from app.core.security import sha256_hex
 from app.schemas.common import Message
 from app.schemas.users import (
@@ -18,6 +19,7 @@ from app.schemas.users import (
     UserOut,
 )
 from app.services.auth_service import TokenPair
+from app.services.login_protection import LoginContext
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 auth_limit = Depends(RateLimit("auth", "rate_limit_auth_per_window"))
@@ -53,9 +55,24 @@ async def login(body: LoginRequest, request: Request, services: ServicesDep, c: 
         c.settings.rate_limit_auth_per_window,
         c.settings.rate_limit_window_seconds,
     )
-    user, pair = await services.auth().login(
-        email=body.email, password=body.password, user_agent=request.headers.get("user-agent")
+    guard = c.login_guard
+    assert guard is not None
+    ctx = LoginContext.build(
+        ip=client_ip(request, c),
+        email=body.email,
+        device_header=request.headers.get("x-device-id"),
+        user_agent=request.headers.get("user-agent"),
     )
+    # Cheap risk check first: throttled or unchallenged requests never reach the argon2 verify.
+    await guard.check(ctx, body.challenge_token)
+    try:
+        user, pair = await services.auth().login(
+            email=body.email, password=body.password, user_agent=request.headers.get("user-agent")
+        )
+    except Unauthorized:
+        await guard.record_failure(ctx)
+        raise
+    await guard.record_success(ctx)
     return AuthOut(user=user_out(user), tokens=_tokens(pair))
 
 

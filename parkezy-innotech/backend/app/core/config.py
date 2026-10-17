@@ -10,7 +10,7 @@ from email.utils import parseaddr
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
+from pydantic import AnyHttpUrl, BaseModel, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -19,6 +19,37 @@ def _split_csv(value: object) -> object:
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
     return value
+
+
+class RiskRule(BaseModel):
+    """One login risk signal: `weight` points per full `threshold` reached, at most `cap` times.
+
+    points = weight * min(cap, count // threshold). A negative weight lowers the score."""
+
+    threshold: int = Field(ge=1)
+    weight: int
+    cap: int = Field(default=3, ge=1)
+
+
+# Tuned so a few typos stay LOW, sustained guessing reaches MEDIUM (challenge), and only several
+# independent signals together reach HIGH. See docs/login-protection.md for how to retune.
+DEFAULT_LOGIN_RISK_RULES: dict[str, RiskRule] = {
+    # failed logins in login_failure_window_seconds
+    "account_failures": RiskRule(threshold=5, weight=25),  # this account, from any IP
+    "ip_failures": RiskRule(threshold=5, weight=20),
+    "subnet_failures": RiskRule(threshold=20, weight=15),  # IPv4 /24, IPv6 /64
+    "device_failures": RiskRule(threshold=5, weight=20),
+    # spread of failures (successful sign-ins never count, so shared NATs stay clean)
+    "ip_distinct_accounts": RiskRule(threshold=4, weight=25),  # accounts that failed from one IP
+    "account_distinct_ips": RiskRule(threshold=5, weight=20),  # IPs that failed on one account
+    # failed logins across the whole service in rate_limit_window_seconds (attack in progress)
+    "global_failures": RiskRule(threshold=100, weight=15),
+    # request consistency
+    "automation_user_agent": RiskRule(threshold=1, weight=15, cap=1),
+    "missing_user_agent": RiskRule(threshold=1, weight=10, cap=1),
+    # this device signed in to this account before
+    "known_device": RiskRule(threshold=1, weight=-30, cap=1),
+}
 
 
 def normalize_database_url(value: object) -> object:
@@ -154,6 +185,32 @@ class Settings(BaseSettings):
     rate_limit_email_per_window: int = 3
     rate_limit_email_window_seconds: int = 900
 
+    # --- Login abuse protection (app/services/login_protection.py, docs/login-protection.md) ---
+    login_protection_enabled: bool = True
+    login_failure_window_seconds: int = Field(default=900, ge=60)
+    # Hard ceilings per rate_limit_window_seconds, on top of the per-IP and per-account auth limits.
+    login_subnet_attempts_per_window: int = Field(default=60, ge=1)
+    login_device_attempts_per_window: int = Field(default=20, ge=1)
+    login_global_attempts_per_window: int = Field(default=3000, ge=1)
+    # Scores: < medium = allow, >= medium = challenge, >= high = temporary rejection.
+    login_risk_medium_score: int = 40
+    login_risk_high_score: int = 80
+    # JSON object; keys you give replace the defaults, e.g. {"account_failures": {"threshold": 3, "weight": 30}}
+    login_risk_rules: dict[str, RiskRule] = Field(default_factory=dict)
+    login_throttle_retry_seconds: int = Field(default=120, ge=1)
+    login_known_device_ttl_days: int = Field(default=90, ge=1)
+    # Used only while Redis is unreachable: per-process attempts per IP and per account per window.
+    login_fallback_attempts_per_window: int = Field(default=20, ge=1)
+    # Challenge (CAPTCHA) for medium risk. With "none", medium risk is a short slow-down instead.
+    login_challenge_provider: Literal["none", "turnstile"] = "none"
+    login_challenge_unavailable_retry_seconds: int = Field(default=30, ge=1)
+    login_challenge_action: str = "login"
+    login_challenge_max_age_seconds: int = Field(default=300, ge=10)
+    login_challenge_expected_hostnames: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    turnstile_site_key: str | None = None
+    turnstile_secret_key: SecretStr | None = None
+    turnstile_verify_url: AnyHttpUrl = AnyHttpUrl("https://challenges.cloudflare.com/turnstile/v0/siteverify")
+
     # --- Caching / bloom filters ---
     search_cache_ttl_seconds: int = 30
     # geohash-cell caching: cell half-diagonal <= ratio * radius; fetch limit * multiplier candidates per cell
@@ -226,7 +283,13 @@ class Settings(BaseSettings):
     )
 
     _csv = field_validator(
-        "cors_origins", "admin_emails", "upload_allowed_types", "google_client_ids", "apple_client_ids", mode="before"
+        "cors_origins",
+        "admin_emails",
+        "upload_allowed_types",
+        "google_client_ids",
+        "apple_client_ids",
+        "login_challenge_expected_hostnames",
+        mode="before",
     )(_split_csv)
     _db_url = field_validator("database_url", "database_read_url", mode="before")(normalize_database_url)
 
@@ -252,6 +315,13 @@ class Settings(BaseSettings):
             raise ValueError(
                 "PAYMENT_PROVIDER=razorpay requires RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET"
             )
+        if self.login_challenge_provider == "turnstile" and not (self.turnstile_site_key and self.turnstile_secret_key):
+            raise ValueError("LOGIN_CHALLENGE_PROVIDER=turnstile requires TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY")
+        if self.login_risk_high_score <= self.login_risk_medium_score:
+            raise ValueError("LOGIN_RISK_HIGH_SCORE must be greater than LOGIN_RISK_MEDIUM_SCORE")
+        unknown = set(self.login_risk_rules) - set(DEFAULT_LOGIN_RISK_RULES)
+        if unknown:
+            raise ValueError(f"Unknown LOGIN_RISK_RULES signals: {sorted(unknown)}")
         if self.app_env == "production":
             for name in ("jwt_secret", "access_code_secret"):
                 if len(getattr(self, name).get_secret_value()) < 32:
@@ -259,6 +329,10 @@ class Settings(BaseSettings):
             if "*" in self.cors_origins:
                 raise ValueError("CORS_ORIGINS=* is not allowed in production; list the allowed origins")
         return self
+
+    @property
+    def effective_login_risk_rules(self) -> dict[str, RiskRule]:
+        return DEFAULT_LOGIN_RISK_RULES | self.login_risk_rules
 
     def pgbouncer_for(self, url: str) -> bool:
         return self.db_pgbouncer if self.db_pgbouncer is not None else uses_pgbouncer(url)

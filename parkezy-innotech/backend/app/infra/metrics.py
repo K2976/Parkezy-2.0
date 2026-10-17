@@ -26,6 +26,28 @@ LATENCY = Histogram(
 )
 
 
+# Login abuse protection (app/services/login_protection.py). Labels are small fixed sets.
+LOGIN_ATTEMPTS = Counter(
+    "parkezy_login_attempts_total",
+    "Login attempts by outcome",
+    ["outcome"],  # success | invalid_credentials | challenged | challenge_failed | throttled | rate_limited
+)
+LOGIN_RISK = Counter("parkezy_login_risk_total", "Login risk classifications", ["level"])  # low | medium | high
+LOGIN_CHALLENGES = Counter(
+    "parkezy_login_challenge_verifications_total",
+    "Challenge token verifications",
+    ["result"],  # passed | failed | replayed
+)
+LOGIN_PROTECTION_DEGRADED = Counter(
+    "parkezy_login_protection_degraded_total", "Login risk checks done without Redis (local fallback)"
+)
+PASSWORD_VERIFY = Histogram(
+    "parkezy_password_verify_seconds",
+    "Argon2 password verification time, including the wait for a hashing slot",
+    buckets=(0.025, 0.05, 0.1, 0.2, 0.4, 0.8, 1.6, 3.2),
+)
+
+
 class _QueueCollector:
     """Outbox gauges read fresh from the database on every scrape (see /metrics).
 
