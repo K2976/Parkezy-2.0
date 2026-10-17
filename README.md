@@ -306,8 +306,7 @@ Found a vulnerability? Please report it privately through [GitHub security advis
 
 ## Team
 
-Built by [@honoursbhaduria](https://github.com/honoursbhaduria), [@K2976](https://github.com/K2976), [@Nl-T-lN](https://github.com/Nl-T-lN) and sadharanpanda.
-
+Built by [@honoursbhaduria](https://github.com/honoursbhaduria), [@K2976](https://github.com/K2976).
 ## License
 
 No open-source license has been chosen yet, so all rights are reserved by the authors. Please ask before reusing the code.
