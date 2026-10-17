@@ -61,8 +61,12 @@ class OidcIdentityVerifier:
         apple_client_ids: list[str],
         clerk_issuer: str = "https://exciting-sawfly-3079.clerk.accounts.dev",
         clerk_jwks_url: str = "https://exciting-sawfly-3079.clerk.accounts.dev/.well-known/jwks.json",
+        clerk_secret_key: str | None = None,
+        clerk_api_base: str = "https://api.clerk.com/v1",
     ) -> None:
         self._http = http
+        self._clerk_secret_key = clerk_secret_key
+        self._clerk_api_base = clerk_api_base
         self._providers = {
             "google": ProviderConfig(GOOGLE_ISSUERS, GOOGLE_JWKS, tuple(google_client_ids)),
             "apple": ProviderConfig(APPLE_ISSUERS, APPLE_JWKS, tuple(apple_client_ids)),
@@ -127,6 +131,11 @@ class OidcIdentityVerifier:
             emails = claims.get("email_addresses")
             if isinstance(emails, list) and emails and isinstance(emails[0], dict):
                 email = emails[0].get("email_address")
+        email_verified = _truthy(claims.get("email_verified", True))
+        if provider == "clerk" and not email:
+            # Default Clerk session tokens have no email claim. Ask Clerk, server to server; never fall
+            # back to an email supplied by the client (that would let anyone claim any account).
+            email, email_verified = await self.clerk_primary_email(str(claims["sub"]))
         full_name = claims.get("name") or claims.get("full_name")
         if not full_name and (claims.get("given_name") or claims.get("family_name")):
             full_name = f"{claims.get('given_name', '')} {claims.get('family_name', '')}".strip()
@@ -134,6 +143,27 @@ class OidcIdentityVerifier:
         return SocialIdentity(
             subject=str(claims["sub"]),
             email=email.lower() if isinstance(email, str) else None,
-            email_verified=_truthy(claims.get("email_verified", True)),
+            email_verified=email_verified,
             full_name=full_name or None,
         )
+
+    async def clerk_primary_email(self, user_id: str) -> tuple[str | None, bool]:
+        """(primary email, verified) from the Clerk Backend API; (None, False) when not configured."""
+        if not self._clerk_secret_key:
+            return None, False
+        try:
+            response = await self._http.get(
+                f"{self._clerk_api_base}/users/{user_id}",
+                headers={"Authorization": f"Bearer {self._clerk_secret_key}"},
+            )
+            response.raise_for_status()
+            user = response.json()
+        except (httpx.HTTPError, ValueError) as e:
+            raise ExternalServiceError("Could not reach the sign-in provider") from e
+        primary = user.get("primary_email_address_id")
+        for address in user.get("email_addresses") or []:
+            if address.get("id") == primary:
+                verified = (address.get("verification") or {}).get("status") == "verified"
+                email = address.get("email_address")
+                return (email.lower() if isinstance(email, str) else None), verified
+        return None, False

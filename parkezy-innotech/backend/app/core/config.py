@@ -271,6 +271,11 @@ class Settings(BaseSettings):
     # --- Sign in with Google / Apple (comma-separated OAuth client ids; empty disables the provider) ---
     google_client_ids: Annotated[list[str], NoDecode] = Field(default_factory=list)
     apple_client_ids: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    # Clerk (Google sign-in in the app). Clerk session tokens carry no email by default: either add
+    # an "email" claim to the session token in the Clerk dashboard, or set the secret key so the API
+    # can look up the user's verified email itself. The email the app sends is never trusted.
+    clerk_secret_key: SecretStr | None = None
+    clerk_api_base: AnyHttpUrl = AnyHttpUrl("https://api.clerk.com/v1")
 
     # --- External HTTP ---
     http_timeout_seconds: float = 10.0

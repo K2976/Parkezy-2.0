@@ -4,9 +4,11 @@ import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 
 export default function DownloadAndroidPage() {
-  const cdnApkUrl = "https://expo.dev/artifacts/eas/IDx1kmEAnwYZxld5XJEKOuRedNDpi48bMsPbZVsRx14.apk";
-  const localApkUrl = "/downloads/parkezy.apk";
-  const apkDownloadUrl = process.env.NEXT_PUBLIC_APK_URL || cdnApkUrl;
+  // Always the newest GitHub release: each release attaches the APK as "parkezy.apk".
+  const githubApkUrl = "https://github.com/honoursbhaduria/Parkezy-2.0/releases/latest/download/parkezy.apk";
+  // Backup: the same build on Expo's servers.
+  const mirrorApkUrl = "https://expo.dev/artifacts/eas/wnRELotnkfAZ081LEHFOdGwNJIrzx_Pvr7ZM5ttJ-94.apk";
+  const apkDownloadUrl = process.env.NEXT_PUBLIC_APK_URL || githubApkUrl;
 
   return (
     <div className="min-h-screen bg-[#FAF9FD] relative overflow-hidden flex flex-col justify-between text-[#1C1924]">
@@ -56,12 +58,12 @@ export default function DownloadAndroidPage() {
             </a>
 
             <a
-              href={localApkUrl}
+              href={mirrorApkUrl}
               download="parkezy.apk"
               className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#1C1924] font-medium py-3 px-6 rounded-xl flex items-center justify-center gap-2 text-sm transition-colors"
             >
               <Download size={16} className="text-[#6E5BC4]" />
-              <span>Direct Local Mirror (~137 MB)</span>
+              <span>Backup mirror (~143 MB)</span>
             </a>
           </div>
         </div>

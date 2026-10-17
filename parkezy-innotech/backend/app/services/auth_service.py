@@ -302,16 +302,9 @@ class AuthService:
         verified email match (links the identity to the existing account), else a new account."""
         if verifier is None:
             raise Unauthorized("Social sign-in is not available", code="provider_not_configured")
+        # Only the provider decides the email. The `email` the client sends is ignored on purpose:
+        # trusting it would let anyone sign in to any account by typing its address.
         identity = await verifier.verify(provider=provider, id_token=id_token, nonce=nonce)
-        if not identity.email and email:
-            from app.integrations.identity import SocialIdentity as IdentityInfo
-
-            identity = IdentityInfo(
-                subject=identity.subject,
-                email=email.lower(),
-                email_verified=True,
-                full_name=identity.full_name or full_name,
-            )
         # Two first sign-ins racing each other: the loser hits a unique constraint and retries,
         # by which time the winner's account exists and is found by subject.
         for attempt in range(3):
@@ -340,8 +333,9 @@ class AuthService:
 
         if not identity.email:
             raise ValidationFailed(
-                "We need your email address to create the account. Remove the app in your Apple ID "
-                "settings and sign in again, sharing your email.",
+                "We could not get a verified email address from your sign-in provider. Try again, or "
+                "sign up with email and password. (With Apple, remove the app in your Apple ID settings "
+                "and sign in again, sharing your email.)",
                 code="email_required",
             )
         if not identity.email_verified:
