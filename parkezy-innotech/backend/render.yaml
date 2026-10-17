@@ -46,7 +46,7 @@ services:
       - key: ACCESS_CODE_SECRET
         sync: false
       - key: CLERK_PUBLISHABLE_KEY
-        value: pk_test_ZXhjaXRpbmctc2F3Zmx5LTMwNzkuY2xlcmsuYWNjb3VudHMuZGV2JA
+        sync: false
       - key: CLERK_ISSUER
         value: https://exciting-sawfly-3079.clerk.accounts.dev
       - key: CLERK_JWKS_URL

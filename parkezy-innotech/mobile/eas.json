@@ -25,8 +25,7 @@
         "APP_SCHEME": "parkezy",
         "IOS_BUNDLE_ID": "com.parkezy.app",
         "ANDROID_PACKAGE": "com.parkezy.app",
-        "EAS_PROJECT_ID": "898e16f3-64dd-4707-8772-0d576d003268",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZXhjaXRpbmctc2F3Zmx5LTMwNzkuY2xlcmsuYWNjb3VudHMuZGV2JA"
+        "EAS_PROJECT_ID": "898e16f3-64dd-4707-8772-0d576d003268"
       },
       "environment": "preview"
     },
@@ -46,8 +45,7 @@
         "APP_SCHEME": "parkezy",
         "IOS_BUNDLE_ID": "com.parkezy.app",
         "ANDROID_PACKAGE": "com.parkezy.app",
-        "EAS_PROJECT_ID": "898e16f3-64dd-4707-8772-0d576d003268",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZXhjaXRpbmctc2F3Zmx5LTMwNzkuY2xlcmsuYWNjb3VudHMuZGV2JA"
+        "EAS_PROJECT_ID": "898e16f3-64dd-4707-8772-0d576d003268"
       }
     }
   },
