@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Inter, Nunito } from "next/font/google";
 import "./globals.css";
 
@@ -37,6 +38,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${nunito.variable} h-full antialiased`}>
       <body className="min-h-full font-sans bg-white text-[#1C1924] selection:bg-[#6E5BC4] selection:text-white">
         {children}
+        <Analytics />
       </body>
     </html>
   );
