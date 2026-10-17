@@ -58,3 +58,6 @@ out/
 calQ/
 .agents/
 skills-lock.json
+
+# Per-user Claude Code settings
+**/.claude/settings.local.json
