@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 
+import path from "path";
+
 const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://parkezy-api.onrender.com";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   async redirects() {
     return [
       {
