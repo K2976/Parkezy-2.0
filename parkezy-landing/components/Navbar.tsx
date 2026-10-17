@@ -9,6 +9,7 @@ const navLinks = [
   { label: "Smart Pass", href: "#pass" },
   { label: "For Hosts", href: "#hosts" },
   { label: "FAQ", href: "#faq" },
+  { label: "Docs", href: "/docs" },
 ];
 
 export default function Navbar() {
