@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
         source: "/downloads/parkezy.apk",
         destination:
           process.env.NEXT_PUBLIC_APK_URL ||
-          "https://expo.dev/artifacts/eas/IDx1kmEAnwYZxld5XJEKOuRedNDpi48bMsPbZVsRx14.apk",
+          "https://expo.dev/artifacts/eas/wnRELotnkfAZ081LEHFOdGwNJIrzx_Pvr7ZM5ttJ-94.apk",
         permanent: false,
       },
       // The API serves the legal documents (same text the app shows).
