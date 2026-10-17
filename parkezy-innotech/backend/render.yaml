@@ -54,7 +54,7 @@ services:
       - key: PAYMENT_PROVIDER
         value: razorpay
       - key: RAZORPAY_KEY_ID
-        value: rzp_test_ToZcVVw8BtcJPq
+        sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
