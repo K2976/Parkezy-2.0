@@ -67,16 +67,16 @@ export default function FinalCTA() {
           </div>
 
           {/* Right Angled Phone Previews */}
-          <div className="w-full lg:w-[45%] h-[380px] lg:h-[420px] relative mt-8 lg:mt-0">
+          <div className="w-full lg:w-[45%] h-[330px] min-[400px]:h-[380px] lg:h-[420px] relative mt-8 lg:mt-0">
             {/* Screen 1 (Explore) */}
             <motion.div
               initial={{ opacity: 0, x: 50, rotate: 0 }}
               whileInView={{ opacity: 1, x: 0, rotate: -5 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
-              className="absolute right-0 top-[-60px] lg:top-[-80px] w-[230px] md:w-[270px] h-[420px] lg:h-[500px] bg-slate-900 rounded-[32px] overflow-hidden shadow-2xl border-4 border-slate-700 pointer-events-none origin-bottom-right z-20"
+              className="absolute right-0 top-[-50px] min-[400px]:top-[-60px] lg:top-[-80px] w-[196px] min-[400px]:w-[230px] md:w-[270px] h-[358px] min-[400px]:h-[420px] lg:h-[500px] bg-slate-900 rounded-[32px] overflow-hidden shadow-2xl border-4 border-slate-700 pointer-events-none origin-bottom-right z-20"
             >
-              <div className="scale-[0.72] origin-top-left w-[140%] h-[140%]">
+              <div className="scale-[0.614] min-[400px]:scale-[0.72] origin-top-left w-[163%] min-[400px]:w-[140%] h-[163%] min-[400px]:h-[140%]">
                 <PhoneScreenExplore />
               </div>
             </motion.div>
@@ -87,9 +87,9 @@ export default function FinalCTA() {
               whileInView={{ opacity: 1, x: 0, rotate: 7 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.4, type: "spring" }}
-              className="absolute right-[40px] md:right-[90px] top-[70px] lg:top-[90px] w-[230px] md:w-[270px] h-[420px] lg:h-[500px] bg-slate-900 rounded-[32px] overflow-hidden shadow-2xl border-4 border-slate-700 pointer-events-none origin-top-left z-10"
+              className="absolute right-[26px] min-[400px]:right-[40px] md:right-[90px] top-[56px] min-[400px]:top-[70px] lg:top-[90px] w-[196px] min-[400px]:w-[230px] md:w-[270px] h-[358px] min-[400px]:h-[420px] lg:h-[500px] bg-slate-900 rounded-[32px] overflow-hidden shadow-2xl border-4 border-slate-700 pointer-events-none origin-top-left z-10"
             >
-              <div className="scale-[0.72] origin-top-left w-[140%] h-[140%]">
+              <div className="scale-[0.614] min-[400px]:scale-[0.72] origin-top-left w-[163%] min-[400px]:w-[140%] h-[163%] min-[400px]:h-[140%]">
                 <PhoneScreenAccess />
               </div>
             </motion.div>

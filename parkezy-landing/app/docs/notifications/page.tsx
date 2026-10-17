@@ -23,7 +23,7 @@ export default function Notifications() {
         that does not exist. Save first and the process may crash before sending: a booking nobody hears about. The
         outbox removes the second system from the request entirely.
       </P>
-      <Figure caption="The event row is written in the same transaction as the state change, so it exists if and only if the change committed. Delivery happens afterwards, in a worker.">
+      <Figure caption="The event row is written in the same transaction as the state change, so it exists if and only if the change committed. Delivery happens afterwards, in a worker." wide={false}>
         <Flow
           steps={[
             { title: "BEGIN", tag: "one Postgres transaction", detail: "Inside the request that changes state." },

@@ -115,11 +115,12 @@ export function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] 
   );
 }
 
-export function Figure({ caption, children }: { caption: ReactNode; children: ReactNode }) {
+/** `wide`: the content has a minimum width (SVG diagrams) and scrolls sideways on phones. */
+export function Figure({ caption, children, wide = true }: { caption: ReactNode; children: ReactNode; wide?: boolean }) {
   return (
     <figure className="mt-8">
       <div className="overflow-x-auto rounded-2xl border border-[#ECE9F5] bg-[#FCFBFE] p-4 sm:p-6">{children}</div>
-      <p className="mt-2 text-xs text-[#9A94AD] sm:hidden">Swipe sideways to see the whole figure.</p>
+      {wide && <p className="mt-2 text-xs text-[#9A94AD] sm:hidden">Swipe sideways to see the whole figure.</p>}
       <figcaption className="mt-3 text-sm leading-6 text-[#666173]">{caption}</figcaption>
     </figure>
   );

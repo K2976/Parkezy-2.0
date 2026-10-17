@@ -37,7 +37,7 @@ export default function Architecture() {
         Each step can stop the request early with a clear JSON error, so expensive work only happens for requests that
         deserve it.
       </P>
-      <Figure caption="Middleware and dependencies run in this order on every request. The database is touched only after validation, authentication and rate limiting pass.">
+      <Figure caption="Middleware and dependencies run in this order on every request. The database is touched only after validation, authentication and rate limiting pass." wide={false}>
         <Flow
           steps={[
             { title: "Request guard", tag: "middleware", detail: "Rejects bodies over 1 MiB (413) before reading them; adds request id, timing and security headers." },

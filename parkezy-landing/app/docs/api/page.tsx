@@ -13,7 +13,7 @@ export default function Api() {
       />
 
       <H2 id="groups">Endpoint groups</H2>
-      <Figure caption="All 89 routes by group. Host tools and admin operations make up almost half of the surface; the driver flow itself is compact.">
+      <Figure caption="All 89 routes by group. Host tools and admin operations make up almost half of the surface; the driver flow itself is compact." wide={false}>
         <BarChart
           title="Routes per group"
           unit="routes"

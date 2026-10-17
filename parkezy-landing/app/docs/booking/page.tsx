@@ -80,7 +80,7 @@ CONSTRAINT ex_bookings_no_overlap EXCLUDE USING gist (slot_id WITH =, period WIT
         specific slot, it quietly retries with the next free one.
       </P>
       <H3>Measured: 100 drivers, one slot, the same instant</H3>
-      <Figure caption="k6 race test: 100 virtual drivers booked the same single slot for the same window at once. The constraint let exactly one through.">
+      <Figure caption="k6 race test: 100 virtual drivers booked the same single slot for the same window at once. The constraint let exactly one through." wide={false}>
         <SplitBar
           title="Race test result"
           parts={[

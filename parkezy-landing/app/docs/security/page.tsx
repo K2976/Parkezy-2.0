@@ -92,7 +92,7 @@ if estimated > limit:
         failures are spread across accounts and addresses, attack activity across the whole service, and whether this
         device has signed in to this account before.
       </P>
-      <Figure caption="All signals are read in one atomic Redis round trip. No single signal can block a request on its own, and nothing is permanent: every counter expires.">
+      <Figure caption="All signals are read in one atomic Redis round trip. No single signal can block a request on its own, and nothing is permanent: every counter expires." wide={false}>
         <Flow
           steps={[
             { title: "Cheap risk check", tag: "≈1 ms, before hashing", detail: "Failure history, spread of failures, service-wide attack level, known device." },
@@ -108,7 +108,7 @@ if estimated > limit:
         />
       </Figure>
       <H3>Why it is cheap to defend and expensive to attack</H3>
-      <Figure caption="Measured on our development machine. Rejected attempts cost about 1 ms of Redis work instead of ~68 ms of argon2. In a simulated flood of 1,000 failed logins from rotating addresses, 700 were stopped before hashing.">
+      <Figure caption="Measured on our development machine. Rejected attempts cost about 1 ms of Redis work instead of ~68 ms of argon2. In a simulated flood of 1,000 failed logins from rotating addresses, 700 were stopped before hashing." wide={false}>
         <BarChart
           title="Cost per login attempt"
           unit="ms"

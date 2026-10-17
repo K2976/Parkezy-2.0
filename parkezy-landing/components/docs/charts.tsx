@@ -13,8 +13,8 @@ export function BarChart({ bars, unit, title }: { bars: Bar[]; unit: string; tit
   return (
     <div role="img" aria-label={title} className="mx-auto max-w-3xl space-y-3">
       {bars.map((b) => (
-        <div key={b.label} className="grid grid-cols-[minmax(0,10.5rem)_1fr] items-center gap-3 sm:grid-cols-[13rem_1fr]">
-          <span className="truncate font-mono text-xs text-[#3F3A4B] sm:text-[13px]" title={b.label}>
+        <div key={b.label} className="grid grid-cols-1 items-center gap-1 sm:grid-cols-[13rem_1fr] sm:gap-3">
+          <span className="font-mono text-xs text-[#3F3A4B] sm:truncate sm:text-[13px]" title={b.label}>
             {b.label}
           </span>
           <div className="flex items-center gap-2">
@@ -24,7 +24,7 @@ export function BarChart({ bars, unit, title }: { bars: Bar[]; unit: string; tit
                 style={{ width: `${Math.max(1.5, (b.value / max) * 100)}%` }}
               />
             </div>
-            <span className="w-24 shrink-0 text-right text-sm font-semibold tabular-nums text-[#1C1924]">
+            <span className="w-[5.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-[#1C1924] sm:w-24">
               {b.display ?? b.value.toLocaleString("en-IN")} <span className="font-normal text-[#666173]">{unit}</span>
             </span>
           </div>

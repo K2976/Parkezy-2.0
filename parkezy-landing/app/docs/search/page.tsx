@@ -50,7 +50,7 @@ export default function Search() {
       />
 
       <H2 id="flow">Request flow</H2>
-      <Figure caption="Search reads from a read-only session, which can point at a read replica when one is configured.">
+      <Figure caption="Search reads from a read-only session, which can point at a read replica when one is configured." wide={false}>
         <Flow
           steps={[
             { title: "Pick the cell", tag: "geo.py", detail: "Coarsest geohash cell whose half-diagonal is at most 25% of the radius." },

@@ -45,7 +45,7 @@ uv run python ../loadtest/probe_edges.py                       # hostile input
       />
 
       <H2 id="capacity">Capacity per endpoint</H2>
-      <Figure caption="Peak sustained requests per second, 4 workers. Reads are fast; login is deliberately slow because of argon2 password hashing (measured before hashing moved off the event loop).">
+      <Figure caption="Peak sustained requests per second, 4 workers. Reads are fast; login is deliberately slow because of argon2 password hashing (measured before hashing moved off the event loop)." wide={false}>
         <BarChart
           title="Peak sustained requests per second"
           unit="req/s"
@@ -64,7 +64,7 @@ uv run python ../loadtest/probe_edges.py                       # hostile input
       </Figure>
 
       <H2 id="correctness">Correctness under pressure</H2>
-      <Figure caption="100 drivers booking one slot for the same window at the same instant.">
+      <Figure caption="100 drivers booking one slot for the same window at the same instant." wide={false}>
         <SplitBar
           title="Slot race"
           parts={[
