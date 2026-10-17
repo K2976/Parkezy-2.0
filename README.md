@@ -10,6 +10,7 @@
 [![API](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://parkezy-api.onrender.com/health/ready)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo&logoColor=white)](https://expo.dev)
 [![Postgres](https://img.shields.io/badge/PostgreSQL-PostGIS-4169E1?logo=postgresql&logoColor=white)](https://postgis.net)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [**Download the Android app**](https://github.com/honoursbhaduria/Parkezy-2.0/releases/latest/download/parkezy.apk) ·
 [Website](https://parkezy-landing.vercel.app) ·
@@ -309,4 +310,4 @@ Found a vulnerability? Please report it privately through [GitHub security advis
 Built by [@honoursbhaduria](https://github.com/honoursbhaduria), [@K2976](https://github.com/K2976).
 ## License
 
-No open-source license has been chosen yet, so all rights are reserved by the authors. Please ask before reusing the code.
+Released under the [MIT License](LICENSE).
