@@ -1,4 +1,5 @@
 import { api } from '@/api/client';
+import { deviceId } from '@/auth/deviceId';
 import type {
   AccessCredentials,
   AccessVerifyResult,
@@ -44,8 +45,13 @@ export type BookingGroup = 'upcoming' | 'active' | 'past';
 export const authApi = {
   register: (body: { email: string; password: string; full_name: string; phone?: string | null }) =>
     api.request<AuthResponse>('/v1/auth/register', { method: 'POST', body, auth: false }),
-  login: (body: { email: string; password: string }) =>
-    api.request<AuthResponse>('/v1/auth/login', { method: 'POST', body, auth: false }),
+  login: async (body: { email: string; password: string; challenge_token?: string }) =>
+    api.request<AuthResponse>('/v1/auth/login', {
+      method: 'POST',
+      body,
+      auth: false,
+      headers: { 'X-Device-Id': await deviceId() },
+    }),
   refresh: (refresh_token: string) =>
     api.request<Tokens>('/v1/auth/refresh', { method: 'POST', body: { refresh_token }, auth: false }),
   logout: (refresh_token: string) =>

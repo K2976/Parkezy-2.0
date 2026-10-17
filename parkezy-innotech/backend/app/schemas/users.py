@@ -38,6 +38,8 @@ class RegisterRequest(Schema):
 class LoginRequest(Schema):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    # Token from the challenge widget, sent only after the API answered challenge_required.
+    challenge_token: str | None = Field(default=None, max_length=2048)
 
 
 class RefreshRequest(Schema):

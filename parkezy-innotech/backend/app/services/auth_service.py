@@ -4,6 +4,7 @@ Refresh tokens are opaque, stored hashed, rotated on every use, and grouped in f
 re-using an already-rotated token revokes the whole family (stolen-token detection).
 """
 
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -24,6 +25,7 @@ from app.core.security import (
 )
 from app.db.models import RefreshToken, SocialIdentity, User, VerificationCode
 from app.domain.enums import CodePurpose, UserStatus
+from app.infra import metrics
 from app.integrations.identity import IdentityVerifier
 from app.services.outbox import Event, Outbox
 
@@ -181,9 +183,15 @@ class AuthService:
     async def login(self, *, email: str, password: str, user_agent: str | None) -> tuple[User, TokenPair]:
         user = await self._active_user_by_email(email)
         await self._release_connection_before_hashing()
-        if user is None or not user.password_hash or not await self._hasher.verify_async(user.password_hash, password):
+        password_hash = user.password_hash if user is not None else None
+        # Always run one full verification: unknown emails and social-only accounts are checked against a
+        # dummy hash, so the response time does not reveal whether an account exists.
+        started = time.perf_counter()
+        valid = await self._hasher.verify_async(password_hash or await self._hasher.dummy_hash_async(), password)
+        metrics.PASSWORD_VERIFY.observe(time.perf_counter() - started)
+        if user is None or not password_hash or not valid:
             raise Unauthorized("Incorrect email or password", code="invalid_credentials")
-        if self._hasher.needs_rehash(user.password_hash):
+        if self._hasher.needs_rehash(password_hash):
             user.password_hash = await self._hasher.hash_async(password)
         return user, await self._issue(user, user_agent)
 
@@ -297,6 +305,7 @@ class AuthService:
         identity = await verifier.verify(provider=provider, id_token=id_token, nonce=nonce)
         if not identity.email and email:
             from app.integrations.identity import SocialIdentity as IdentityInfo
+
             identity = IdentityInfo(
                 subject=identity.subject,
                 email=email.lower(),

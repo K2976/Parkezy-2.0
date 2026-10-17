@@ -4,6 +4,7 @@ Services never construct their own collaborators; they receive them from here (A
 app/api/deps.py, workers via app/workers/runtime.py). Tests swap pieces by passing overrides.
 """
 
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from app.infra.bloom import BloomFilter
 from app.infra.cache import Cache
 from app.infra.one_time import OneTimeTokenRegistry
 from app.infra.rate_limit import RateLimiter
+from app.integrations.challenge import ChallengeVerifier, NoChallengeVerifier, TurnstileVerifier
 from app.integrations.email import (
     ConsoleEmailSender,
     EmailRenderer,
@@ -32,6 +34,7 @@ from app.integrations.payments import PaymentGateway, RazorpayGateway
 from app.integrations.push import ExpoPushSender, NoopPushSender, PushSender
 from app.integrations.storage import ObjectStorage, S3ObjectStorage
 from app.services.jobs import JobQueue
+from app.services.login_protection import LoginProtection
 
 TEMPLATE_DIR = Path(__file__).parent / "templates" / "emails"
 
@@ -60,6 +63,7 @@ class Container:
     push_sender: PushSender
     jobs: JobQueue
     identity_verifier: IdentityVerifier | None = None
+    login_guard: LoginProtection | None = None
     extras: dict = field(default_factory=dict)
 
     async def aclose(self) -> None:
@@ -109,6 +113,21 @@ def _push_sender(s: Settings, http: httpx.AsyncClient) -> PushSender:
         token = s.expo_access_token.get_secret_value() if s.expo_access_token else None
         return ExpoPushSender(http, str(s.expo_push_url), token)
     return NoopPushSender()
+
+
+def _challenge_verifier(s: Settings, http: httpx.AsyncClient) -> ChallengeVerifier:
+    if s.login_challenge_provider == "turnstile":
+        assert s.turnstile_site_key and s.turnstile_secret_key
+        return TurnstileVerifier(
+            http,
+            verify_url=str(s.turnstile_verify_url),
+            secret_key=s.turnstile_secret_key.get_secret_value(),
+            site_key=s.turnstile_site_key,
+            expected_hostnames=s.login_challenge_expected_hostnames,
+            expected_action=s.login_challenge_action or None,
+            max_age_seconds=s.login_challenge_max_age_seconds,
+        )
+    return NoChallengeVerifier()
 
 
 def build_container(settings: Settings, *, jobs: JobQueue, pooled_db: bool = True, **overrides) -> Container:
@@ -176,5 +195,9 @@ def build_container(settings: Settings, *, jobs: JobQueue, pooled_db: bool = Tru
             http, google_client_ids=settings.google_client_ids, apple_client_ids=settings.apple_client_ids
         ),
     )
+    challenge = overrides.pop("challenge_verifier", None) or _challenge_verifier(settings, http)
     parts.update(overrides)
+    parts.setdefault(
+        "login_guard", LoginProtection(settings, parts["redis"], parts["one_time"], challenge, now=time.time)
+    )
     return Container(**parts)

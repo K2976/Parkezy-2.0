@@ -30,6 +30,7 @@ class PasswordHasher:
         self._semaphores: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
             weakref.WeakKeyDictionary()
         )
+        self._dummy_hash: str | None = None
 
     def hash(self, password: str) -> str:
         return self._argon.hash(password)
@@ -54,6 +55,13 @@ class PasswordHasher:
     async def verify_async(self, password_hash: str, password: str) -> bool:
         async with self._semaphore():
             return await asyncio.to_thread(self.verify, password_hash, password)
+
+    async def dummy_hash_async(self) -> str:
+        """A real hash of a random password, made once. Verifying a guess against it costs the same as
+        a real verification, so an unknown email takes as long as a wrong password (no enumeration)."""
+        if self._dummy_hash is None:
+            self._dummy_hash = await self.hash_async(secrets.token_urlsafe(32))
+        return self._dummy_hash
 
     def needs_rehash(self, password_hash: str) -> bool:
         return self._argon.check_needs_rehash(password_hash)
