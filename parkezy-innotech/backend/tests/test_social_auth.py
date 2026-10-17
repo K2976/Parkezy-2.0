@@ -222,3 +222,68 @@ async def test_concurrent_first_sign_ins_create_one_account(h: Harness, idp: Fak
     assert all(r.status_code in (200, 201) for r in responses), [r.text for r in responses]
     assert len({r.json()["user"]["id"] for r in responses}) == 1
     assert sum(r.status_code == 201 for r in responses) == 1
+
+
+async def test_client_supplied_email_is_never_trusted(h: Harness, idp: FakeIdentityVerifier):
+    """Account takeover guard: a valid token without an email plus a victim's address in the body
+    must not sign in to the victim's account (it used to)."""
+    victim = await register(h, "owner@test.parkezy.dev")
+    idp.issue("clerk", "c1", Identity("clerk-attacker", None, False, "Attacker"))
+    r = await _social(h, "clerk", "c1", email="owner@test.parkezy.dev", full_name="Attacker")
+    assert r.status_code == 422 and r.json()["error"]["code"] == "email_required", r.text
+    assert "tokens" not in r.text
+    # the victim's account is untouched
+    r = await h.client.post("/v1/auth/login", json={"email": victim["email"], "password": "parking123"})
+    assert r.status_code == 200
+    assert (await h.client.get("/v1/me", headers=auth(victim["token"]))).status_code == 200
+
+
+# ---------------------------------------------------------------- Clerk email lookup (mocked Clerk API)
+
+import httpx  # noqa: E402
+
+from app.core.errors import ExternalServiceError  # noqa: E402
+from app.integrations.identity import OidcIdentityVerifier  # noqa: E402
+
+
+def _clerk(handler, secret: str | None = "sk_test_x") -> OidcIdentityVerifier:
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return OidcIdentityVerifier(http, google_client_ids=[], apple_client_ids=[], clerk_secret_key=secret)
+
+
+def _clerk_user(status: str) -> dict:
+    return {
+        "primary_email_address_id": "idn_2",
+        "email_addresses": [
+            {"id": "idn_1", "email_address": "old@example.com", "verification": {"status": "verified"}},
+            {"id": "idn_2", "email_address": "Main@Example.com", "verification": {"status": status}},
+        ],
+    }
+
+
+async def test_clerk_lookup_returns_verified_primary_email():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"], seen["auth"] = str(request.url), request.headers.get("authorization")
+        return httpx.Response(200, json=_clerk_user("verified"))
+
+    assert await _clerk(handler).clerk_primary_email("user_123") == ("main@example.com", True)
+    assert seen == {"url": "https://api.clerk.com/v1/users/user_123", "auth": "Bearer sk_test_x"}
+
+
+async def test_clerk_lookup_reports_unverified_email():
+    result = await _clerk(lambda r: httpx.Response(200, json=_clerk_user("unverified"))).clerk_primary_email("u")
+    assert result == ("main@example.com", False)
+
+
+async def test_clerk_lookup_without_secret_returns_nothing():
+    def handler(request):
+        raise AssertionError("must not call Clerk without a secret")
+
+    assert await _clerk(handler, secret=None).clerk_primary_email("u") == (None, False)
+
+
+async def test_clerk_lookup_failure_is_an_error_not_a_guess():
+    with pytest.raises(ExternalServiceError):
+        await _clerk(lambda r: httpx.Response(503)).clerk_primary_email("u")

@@ -192,7 +192,11 @@ def build_container(settings: Settings, *, jobs: JobQueue, pooled_db: bool = Tru
         push_sender=_push_sender(settings, http),
         jobs=jobs,
         identity_verifier=OidcIdentityVerifier(
-            http, google_client_ids=settings.google_client_ids, apple_client_ids=settings.apple_client_ids
+            http,
+            google_client_ids=settings.google_client_ids,
+            apple_client_ids=settings.apple_client_ids,
+            clerk_secret_key=settings.clerk_secret_key.get_secret_value() if settings.clerk_secret_key else None,
+            clerk_api_base=str(settings.clerk_api_base).rstrip("/"),
         ),
     )
     challenge = overrides.pop("challenge_verifier", None) or _challenge_verifier(settings, http)
